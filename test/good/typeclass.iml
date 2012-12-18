@@ -1,0 +1,320 @@
+(* Standard datatypes library -*- tuareg -*- *)
+
+type ('a, 'b) pair =
+  | Pair of 'a * 'b
+
+type 'a list =
+  | Nil
+  | Cons of 'a * 'a list
+
+type bool = 
+  | True
+  | False 
+
+type nat =
+  | Zero
+  | Succ of nat
+
+type 'a option = 
+  | None 
+  | Some of 'a
+
+type 'a set = Set of 'a list
+
+(* Dictionaries *)
+
+(** class 'a Eq { equal : 'a -> 'a -> bool } **)
+type 'a diEq = DiEq of
+    (* equal : *) 'a -> 'a -> bool
+
+(** class 'a Eq => 'a Ord { lt : 'a -> 'a -> bool; diEq : 'a diEq } **)
+type 'a diOrd = DiOrd of
+     (* diEq : *) 'a diEq * 
+     (* lt : *)   ('a -> 'a -> bool)
+
+(** class 'a Ord => 'a Set 
+      { empty : 'a set; add : 'a set -> 'a -> 'a set;
+        get : 'a set -> 'a option } **)
+type 'a diSet = DiSet of 
+    (* diSetOrd : *) 'a diOrd *
+    (* empty : *)    'a set *
+    (* add : *)      ('a -> 'a set -> 'a set) *
+    (* rem : *)      ('a -> 'a set -> 'a set) *
+    (* get : *)      ('a -> 'a set -> 'a option)
+;;
+
+(* Library *)
+
+(** bool *)
+
+let bif = Lam 'a. fun (b : bool) -> fun (x : 'a) -> fun (y : 'a) ->
+  begin match b with True -> x | False -> y end
+in
+
+let bnot = fun (x : bool) -> 
+  bif [bool] x False True
+in
+
+let band = fun (x : bool) -> fun (y : bool) ->
+  bif [bool] x y False
+in
+
+let bor = fun (x : bool) -> fun (y : bool) ->
+  bif [bool] x True y 
+in
+
+let equal_bool = fun (x : bool) -> fun (y : bool) ->
+  bif [bool] x y (bnot y)
+in
+
+let lt_bool = fun (x : bool) -> fun (y : bool) ->
+  bif [bool] x False y
+in
+
+(** nat *)
+let zero = Zero in
+let one = Succ zero in
+
+let rec equal_nat : nat -> nat -> bool =
+  fun (x : nat) -> fun (y : nat) -> 
+    begin match x with
+      | Zero ->
+          begin match y with | Zero -> True | Succ q -> False end
+      | Succ p ->
+          begin match y with | Zero -> False | Succ q ->
+            equal_nat p q end
+    end
+in
+
+let rec lt_nat : nat -> nat -> bool =
+  fun (x : nat) -> fun (y : nat) -> 
+    begin match x with
+      | Zero ->
+          begin match y with | Zero -> False | Succ q -> True end
+      | Succ p ->
+          begin match y with | Zero -> False | Succ q ->
+            lt_nat p q end
+    end
+in
+
+(* set *)
+
+let unset = Lam 'a. fun (x : 'a set) -> begin match x with Set ['a] y -> y end in
+
+(******************)
+
+(* method equal of from class Eq *)
+let equal = Lam 'a. fun  (?diEq : 'a diEq) =>
+        begin match diEq with DiEq ['a] equal -> equal end
+in
+
+(* inst Eq nat = { equal = equal_nat } *)
+let ?nat_diEq = DiEq [nat] equal_nat in
+
+(* inst Eq bool = { equal = equal_bool } *)
+let ?bool_diEq = DiEq [bool] equal_bool in
+
+(* testing *)
+let t1 = equal [nat] one one in
+let t2 = equal [bool] True True in
+
+(*** (*cannot type*)
+let t = equal [...] one True 
+***)
+
+(** Deriving instances. 
+
+   A deriving instance is a function that creates a dictionary 
+   based on some dictionaries provided for type parameters.
+
+*)
+
+(* inst Eq list (type a)  (diEq : a diEq) { equal = (==) } *)
+
+(* This is not what we wish. But we should still be able to write it. *)
+let should_also_work_list_diEq = 
+  Lam 'a. fun (?diEq : 'a diEq) =>
+    let rec _equal : 'a list -> 'a list -> bool
+        = fun (l1 : 'a list) -> fun (l2 : 'a list) -> 
+        begin match l1 with
+        | Cons ['a] (h1, t1) ->
+            begin match l2 with
+            | Cons ['a] (h2, t2) ->
+                (* ideally equal should be used instead of _equal *)
+                band (equal ['a] h1 h2) (_equal t1 t2)
+            | Nil ['a] -> False
+            end
+        | Nil ['a] -> 
+            begin match l2 with
+            | Cons ['a] (h2, t2) -> False
+            | Nil ['a] -> True
+            end
+        end
+    in
+    DiEq ['a list] _equal
+in
+
+(* This is the correct version *)
+let rec ?list_diEq : 'b. 'b diEq => 'b list diEq = 
+  Lam 'a. fun (?diEq : 'a diEq) =>
+    let _equal = fun (l1 : 'a list) -> fun (l2 : 'a list) -> 
+      begin match l1 with
+      | Cons ['a] (h1, t1) ->
+          begin match l2 with
+          | Cons ['a] (h2, t2) -> band (equal ['a] h1 h2) (equal ['a list] t1 t2)
+          | Nil ['a] -> False
+          end
+      | Nil ['a] -> 
+          begin match l2 with
+          | Cons ['a] (h2, t2) -> False
+          | Nil ['a] -> True
+          end
+      end
+    in
+    DiEq ['a list] _equal
+in
+
+
+(* testing *)
+let list01 = Cons [nat] (zero, Cons [nat] (one, Nil [nat])) in
+let t3 = equal [nat list] list01 list01 in
+
+
+(* Inheritance: when a class definition may inherit from another one.
+   As explained above, its dictionary must contain one field for each parent
+   class to hold its own dictionary.
+  
+   Therefore, a superclass dictionnary may be access from a subclass.
+   However, this should be given lower priority so that functions that build
+   actual dictionaries behaves as default rules. *)
+
+(** methods to access an Ord dictionary *)
+let ?<diOrdEq = Lam 'a. fun  (?diOrd : 'a diOrd) =>
+  begin match diOrd with DiOrd ['a] (diEq, lt) -> diEq end
+in
+
+let lt = Lam 'a. fun (?diOrd : 'a diOrd) =>
+  begin match diOrd with DiOrd ['a] (diEq, lt) -> lt end
+in
+
+(* class ord inherits from class eq, so to build an instance of ord, we
+   should be able to build an instance of eq, and thus, we only need to
+   provide a method lt  *)
+
+let diOrd = Lam 'a. fun (?diEq : 'a diEq) => fun (lt : 'a -> 'a -> bool) ->
+  DiOrd ['a] (diEq, lt)
+in
+
+(* inst Ord (Int) = { lt = lt_nat } *)
+let ?nat_diOrd = diOrd [nat] lt_nat in
+
+(* inst Ord (Bool) = { lt = lt_bool } *)
+let ?bool_diOrd = diOrd [bool] lt_bool in
+
+
+(** Declaring new overloaded functions. 
+
+   A function that uses overloading that cannot be resolved locally must
+   itself be an overloaded function, i.e. abstract over some dictionaries. 
+   
+   The dictionaries are implicit arguments that will be inferred and passed
+   automatically when the function will be called---including in recursive
+   calls of the function being defined. 
+ *)
+
+
+(* A search function *)
+let rec ?search : 'a. 'a diOrd => 'a -> 'a list -> bool = 
+  Lam 'a. fun  (?diOrd : 'a diOrd) => fun (x : 'a) -> fun (l : 'a list) ->
+    begin match l with
+    | Nil ['a] ->  False 
+    | Cons ['a] (h, t) -> bor (equal ['a] x h) (search ['a] x t)
+    end
+in
+
+(* We do not really need polymorphic recursion here, but a way to tell
+   the implicit arguments. The following also works, but the inner recursive
+   definition does not uses overloading. *) 
+
+let should_also_works_search =
+  Lam 'a. fun (?diOrd : 'a diOrd) =>
+  let rec _search : 'a -> 'a list -> bool
+      = fun (x : 'a) -> fun (l : 'a list) ->
+        begin match l with
+        | Nil ['a] ->  False 
+        | Cons ['a] (h, t) -> bor (equal ['a] x h) (_search x t)
+        end in
+  _search
+in   
+
+(* Test *)
+let t = search [nat] one list01 in
+
+
+(* instance 'a Ord => 'a Set ... *)
+(** Constructor *)
+let diSet = Lam 'a.
+  fun (?diSetOrd : 'a diOrd) => 
+    fun (empty : 'a set) -> 
+      fun (add : 'a -> 'a set -> 'a set) -> 
+        fun (rem : 'a -> 'a set -> 'a set) -> 
+          fun (get : 'a -> 'a set -> 'a option) ->
+            DiSet ['a] (diSetOrd, empty, add, rem, get)
+in
+
+(** Accessors *)
+let diSetOrd = Lam 'a. fun (?diSet : 'a diSet) =>
+  begin match diSet with DiSet ['a] (diSetOrd, empty, add, rem, get) -> diSetOrd end
+in
+let empty = Lam 'a. fun (?diSet : 'a diSet) =>
+  begin match diSet with DiSet ['a] (diSetOrd, empty, add, rem, get) -> empty end in
+let add = Lam 'a. fun (?diSet : 'a diSet) =>
+  begin match diSet with DiSet ['a] (diSetOrd, empty, add, rem, get) -> add end in
+let rm = Lam 'a. fun (?diSet : 'a diSet) =>
+  begin match diSet with DiSet ['a] (diSetOrd, empty, add, rem, get) -> rem end in
+let get = Lam 'a. fun (?diSet : 'a diSet) =>
+  begin match diSet with DiSet ['a] (diSetOrd, empty, add, rem, get) -> get end in
+
+
+let ?set_diSet =
+  Lam 'a. fun (?diSetOrd : 'a diOrd) =>
+    let empty = Set ['a] (Nil ['a]) in
+
+    let add = fun (x : 'a) -> fun (t : 'a set) ->
+      Set ['a] (Cons ['a] (x, unset ['a] t))
+    in
+
+    let rem = fun (x : 'a) -> fun (t : 'a set) ->
+      let l = unset ['a] t in
+      let rec rem_list : 'a list -> 'a list = fun (l : 'a list) ->
+        begin match l with
+        | Nil ['a] -> Nil ['a]
+        | Cons ['a] (hd, tl) ->
+            bif ['a list] (equal ['a] hd x) tl (Cons ['a] (hd, rem_list tl))
+        end in
+      Set ['a] (rem_list l)
+    in
+
+    let get = fun (x : 'a) -> fun (t : 'a set) ->
+      let l = unset ['a] t in
+      let rec get_list : 'a list -> 'a option = fun (l : 'a list) ->
+        begin match l with
+        | Nil ['a] -> None ['a]
+        | Cons ['a] (hd, tl) ->
+            bif ['a option] (equal ['a] hd x) (Some ['a] hd) (get_list tl)
+        end in
+      get_list l
+    in
+
+    diSet ['a] empty add rem get
+in
+
+let ab =  add [nat] zero (add [nat] one (empty [nat])) in
+let t4 = get [nat] zero ab in
+
+(* we retest previous example, which is now ambiguous, since dictionary
+   nat diEq is nat_diEq but can also be pick from nat_diOrd *) 
+
+let t1_bis = equal [nat] one one in
+
+True

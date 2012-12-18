@@ -1,0 +1,10 @@
+(* typechecking error:
+In binding f:
+In expression: id
+Typechecking error: type
+'a. 'a -> 'a
+*)
+;;
+let id = Lam 'a. fun (x : 'a) -> x in
+let f = Lam 'b. id ['b] id in 
+f

@@ -1,0 +1,52 @@
+(* -*- tuareg -*- *)
+
+type nat =
+  | Z
+  | S of nat
+
+type char =
+  | A | B | C
+
+type bool =
+  | True
+  | False
+;;
+
+let ?cast = Lam 'a. fun (x : 'a) -> x in
+
+let ?nat2bool = fun (x : nat) -> 
+  begin match x with Z -> True | S _ -> False end 
+in
+
+let ?bool2nat = fun (x : bool) ->
+  begin match x with True -> Z | False -> S Z end
+in
+
+let ?char2nat = fun (x : char) ->
+  begin match x with A -> Z | B -> S Z | C -> S (S Z) end
+in
+
+let iszero = nat2bool in
+
+let cast_iszero =
+  Lam 'a. fun (?c : 'a -> nat) => fun (x : 'a) -> iszero (c x) in
+
+let not = fun (x : bool) -> 
+  begin match x with True -> False | False -> True end 
+in
+
+let cast_not = 
+  Lam 'a. fun (?c : 'a -> bool) => fun (x : 'a) -> not (c x) in
+
+let isz_z = cast_iszero [nat]  Z in
+
+let isz_true = cast_iszero [bool] True in
+
+let isz_char = cast_iszero [char] A in
+
+let not_z = cast_not [nat] Z in 
+
+let not_true = cast_not [bool] True in 
+
+True
+

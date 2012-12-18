@@ -1,0 +1,10 @@
+type a = A
+type b = B
+;;
+
+let ?a2b = fun (?x : a) => B in
+let ?b2a = fun (?>x : b) => A in
+
+let x = (? : a) in
+(* a calls b which calls a, etc. *)
+x

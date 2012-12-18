@@ -1,0 +1,14 @@
+(* 
+In binding f:
+Typechecking error: application.
+Types 'a
+and 'a -> 'a
+do not agree.
+*)
+
+type unit = Unit 
+;;
+
+let f = Lam 'a. fun (x : 'a -> 'a) -> x x in 
+
+Unit

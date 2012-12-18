@@ -1,0 +1,12 @@
+type a = A
+type 'a t = T of 'a
+;;
+
+let ?aat = T [a t] (T [a] A) in 
+let ?<at2a = Lam 'a. fun (?x : 'a t) => begin match x with T ['a] y -> y end in 
+
+let y = (? : a t) in 
+let x = (? : a) in
+(* fails, because x should (at2a (at2a aat)) *)
+x
+

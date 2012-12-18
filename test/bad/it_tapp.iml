@@ -1,0 +1,6 @@
+type unit = Unit 
+;;
+
+let id = Lam 'a. fun (x : 'a) -> x in
+let f = id id in 
+Unit

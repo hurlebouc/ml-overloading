@@ -1,0 +1,61 @@
+(* -*- tuareg -*- *)
+
+type 'a list =
+  | Nil
+  | Cons of 'a * 'a list
+
+type bool =
+  | True
+  | False
+
+;;
+
+let f = fun (x : bool) -> fun (x : bool) -> x in
+
+let rec map : 'a. 'b. ('a -> 'b) -> 'a list -> 'b list  =
+  Lam 'a 'b. 
+  fun (f : 'a -> 'b) -> fun (xs : 'a list) ->
+    begin match xs with
+    | Nil ['a] ->
+        Nil ['b]
+    | Cons ['a] (x, xs) ->
+        Cons ['b] (f x, map ['a, 'b] f xs)
+    end
+in
+
+let rec fold : 'a. 'b. ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b = 
+  Lam 'a. Lam 'b.
+  fun (f : 'a -> 'b -> 'b) ->  fun (xs : 'a list) -> fun (accu : 'b) ->
+    begin match xs with
+    | Nil ['a] ->
+        accu
+    | Cons ['a] (x, xs) ->
+        f x (fold ['a, 'b] f xs accu)
+    end
+in
+
+let neg = fun (b : bool) ->
+  begin match b with
+  | True ->
+      False
+  | False ->
+      True
+  end
+in
+
+let conj = fun (b1 : bool) -> fun (b2 : bool) ->
+  begin match b1 with
+  | True ->
+      b2
+  | False ->
+      False
+  end
+in
+
+let res = 
+  fold [bool, bool]
+    conj
+    (map [bool, bool] neg (Cons [bool] (True, (Cons [bool] (False, Nil[bool])))))
+    True in
+res
+

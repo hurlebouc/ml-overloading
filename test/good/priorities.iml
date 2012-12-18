@@ -1,0 +1,60 @@
+(* -*- tuareg -*- *)
+
+type a = L1 | L2 | L | M | R | R1 | R2 
+;;
+let lm = 
+  let ?<l = L in
+  let ?m = M in
+  let x = (? : a) in
+  x 
+in
+
+let ml = 
+  let ?m = M in
+  let ?<l = L in
+  let x = (? : a) in
+  x 
+in
+
+let ll = 
+  let ?<l1 = L1 in
+  let ?<l2 = L2 in
+  let x = (? : a) in
+  x 
+in
+
+let lr = 
+  let ?<l = L in
+  let ?>r = R in
+  let x = (? : a) in
+  x 
+in
+
+let rl = 
+  let ?>r = R in
+  let ?<l = L in
+  let x = (? : a) in
+  x 
+in
+
+let rm = 
+  let ?>r = R in
+  let ?m = M in
+  let x = (? : a) in
+  x 
+in
+
+let mr = 
+  let ?m = M in
+  let ?>r = R in
+  let x = (? : a) in
+  x 
+in
+
+let rr = 
+  let ?>r = R1 in
+  let ?>r = R2 in
+  let x = (? : a) in
+  x 
+in
+M

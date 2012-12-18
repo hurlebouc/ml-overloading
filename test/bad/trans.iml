@@ -1,0 +1,8 @@
+;;
+
+let ?comp = 
+  Lam 'a. Lam 'b. Lam 'c. fun (?c1 : 'a -> 'b) => fun (?c2 : 'b -> 'c) =>
+    fun (x : 'a) -> c2 (c1 x) in
+
+comp
+

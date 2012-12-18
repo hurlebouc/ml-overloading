@@ -1,0 +1,27 @@
+(* -*- tuareg -*- *)
+
+type nat = S | Z of nat
+type zero = Zero
+type 'n succ = Succ
+type ('n, 'm, 'p) add = Add
+;;
+
+let ?addZ = 
+  Lam 'n. 
+  Add ['n, zero, 'n] 
+in
+
+let rec ?addS : 'n. 'm. 'p. 
+    ('n, 'm, 'p) add => 
+    ('n, 'm succ, 'p succ) add 
+  = 
+  Lam 'n. Lam 'm. Lam 'p. 
+  fun (?pf : ('n, 'm, 'p) add) =>
+    Add ['n, 'm succ, 'p succ]
+in    
+
+(? : (zero succ succ, zero succ, (* 2 + 1 = *)
+      zero succ succ succ)       (* 3       *)
+    add)
+
+

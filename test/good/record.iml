@@ -1,0 +1,23 @@
+(* -*- tuareg -*- *)
+type unit =
+  | Unit
+
+type bool =
+  | True
+  | False
+
+type ('a, 'b) ab = AB of 'a * 'b
+
+type 'a a = A of 'a
+;;
+
+let ?xa = Lam 'a. fun (x : 'a a) -> begin match x with A ['a] y -> y end in
+let ?xab = Lam 'a. Lam 'b.
+  fun (x : ('a, 'b) ab) -> begin match x with AB ['a, 'b] (y, z) -> y end in
+
+let x = Lam 'a. Lam 'b. fun (? x : 'a -> 'b) => fun (r : 'a) -> x r in
+
+let a = A [bool] True in
+let b = AB [bool, unit] (True, Unit) in
+
+x

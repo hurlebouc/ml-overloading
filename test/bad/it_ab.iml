@@ -1,0 +1,7 @@
+type a = A
+type b = B 
+;;
+
+let id = Lam 'a. fun (x : 'a) -> x in
+let err = id [a] B in
+err
