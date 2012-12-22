@@ -1,6 +1,0 @@
-type a = A
-;;
-let ?p = A in
-let ?q = A in
-let x = (? : a) in
-A

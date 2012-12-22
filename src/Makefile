@@ -27,8 +27,12 @@ $(EXECUTABLE).opt: $(MODULES:%=%.cmx)
 	$(OCAMLC) $(BFLAGS) -c $*.mli
 %.cmx: %.ml
 	$(OCAMLOPT) $(OFLAGS) -c $*.ml
+
 %.ml %.mli: %.mly
-	$(MENHIR) $*.mly	
+	$(MENHIR) $*.mly
+	sed -e 's/4611686018427387903/max_int/' $*.ml > $*.tmp
+	mv $*.tmp $*.ml
+
 %.ml: %.mll
 	$(OCAMLLEX) $*.mll
 

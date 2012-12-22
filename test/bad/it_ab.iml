@@ -1,3 +1,5 @@
+(* -*- tuareg -*- *)
+
 type a = A
 type b = B 
 ;;

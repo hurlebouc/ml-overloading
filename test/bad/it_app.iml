@@ -1,3 +1,5 @@
+(* -*- tuareg -*- *)
+
 (* 
 In binding f:
 Typechecking error: application.

@@ -1,3 +1,5 @@
+(* -*- tuareg -*- *)
+
 (* typechecking error:
 In binding f:
 In expression: id
