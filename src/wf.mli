@@ -13,7 +13,7 @@ open Ast
    quantifiers, a vector of domain types, and a codomain type. *)
 
 type scheme =
-  | Scheme of type_variable list * typ list * typ
+  | Scheme of (type_variable list) * (typ list) * (typ)
 
 type data_constructor_table =
     scheme StringMap.t

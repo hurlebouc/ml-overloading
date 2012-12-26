@@ -8,10 +8,11 @@ open Exproftype
 (* The elaborator receives a term that has been alpha-converted so that
    bindings should not shadow one another.
 
-   It uses separate environments [tvenv] to map type variables to unit,
-   [vvenv] to map value variables to type schemes and [ivenv] to keep a
-   structure of avaivalue implicit value variables with their type schemes
-   of type [Exproftype.I.t] *)
+   It uses separate environments 
+      [tvenv] to map type variables to unit,
+      [vvenv] to map value variables to type schemes
+      [ivenv] to keep a structure of avaivalue implicit value variables with 
+              their type schemes of type [Exproftype.I.t] *)
 
 (* We collect all environments together *)
 type tvenv = unit StringMap.t

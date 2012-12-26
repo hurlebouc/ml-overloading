@@ -30,14 +30,17 @@ type type_constructor =
 
 (* Types. *)
 
-(* Types can appear within algebraic data type definitions and within
-   expressions. *)
+  (* Types can appear within algebraic data type definitions and within
+   * expressions. *)
 
-(* A type can be: a type variable; a function type; an application of
-   a type constructor to an appropriate number of type arguments. *)
+  (* A type can be: 
+      * a type variable
+      * a function type
+      * an application of a type constructor to an appropriate number of type 
+        arguments. *)
 
-(* Note: [TArrow] is really superfluous, since it is a particular case
-   of [TConApp]. We keep it, for no good reason.  
+  (* Note: [TArrow] is really superfluous, since it is a particular case
+     of [TConApp]. We keep it, for no good reason.  
 
   We use two constructors for variables to distinguish in type schemes
    between free variables that cannot and generic variables that may be
@@ -87,11 +90,17 @@ type branch =
 
 (* Expressions. *)
 
-(* An expression can be: a value variable; an abstraction (that is, an
-   anonymous function); a recursive abstraction; a function
-   application; a tuple (of arbitrary arity); an application of a data
-   constructor to a single argument; a case analysis; an introduction
-   of an existentially quantified type variable; a type annotation. *)
+(* An expression can be: 
+ *    a value variable
+ *    an abstraction (that is, an anonymous function)
+ *    a recursive abstraction
+ *    a function application
+ *    a tuple (of arbitrary arity)
+ *    an application of a data constructor to a single argument
+ *    a case analysis
+ *    an introduction of an existentially quantified type variable
+ *    a type annotation
+ *)
 
 and expression =
   | EVar of value_variable
