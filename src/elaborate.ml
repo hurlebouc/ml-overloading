@@ -27,7 +27,7 @@ type env = {
 (* ------------------------------------------------------------------------- *)
 let rec elaborate_expr env (e : expression) : sch * expression =
    (* INCOMPLETE! of course something should be done here... *)
-   failwith "NOT IMPLEMENTED"
+   failwith "ELABORATION NOT IMPLEMENTED"
 
 (* ------------------------------------------------------------------------- *)
 
