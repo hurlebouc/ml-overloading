@@ -11,22 +11,22 @@ open Ast
 let Program (_, _) as program =
   let channel = open_in Settings.filename in
   let lexbuf = Lexing.from_channel channel in
-  lexbuf.Lexing.lex_curr_p <-
-      { 
-	Lexing.pos_fname = Settings.filename; 
-	Lexing.pos_lnum  = 1;
-	Lexing.pos_bol   = 0; 
-	Lexing.pos_cnum  = 0
-      };
-  try
-    let program = Parser.program Lexer.main lexbuf in
-    close_in channel;
-    program
-  with Parser.Error ->
-    Error.error
-      [ Error.Loc
-          (Some (Lexing.lexeme_start_p lexbuf, Lexing.lexeme_end_p lexbuf)) ]
-      "Syntax error."
+    lexbuf.Lexing.lex_curr_p <-
+    { 
+      Lexing.pos_fname = Settings.filename; 
+      Lexing.pos_lnum  = 1;
+      Lexing.pos_bol   = 0; 
+      Lexing.pos_cnum  = 0
+    };
+    try
+      let program = Parser.program Lexer.main lexbuf in
+        close_in channel;
+        program
+    with Parser.Error ->
+      Error.error
+        [ Error.Loc
+            (Some (Lexing.lexeme_start_p lexbuf, Lexing.lexeme_end_p lexbuf)) ]
+        "Syntax error."
 
 (* Check well-formedness and perform alpha-conversion. *)
 module W = struct
@@ -56,10 +56,10 @@ let () =
     let outputname = Filename.chop_suffix Settings.filename ".iml" ^ ".ml" in
     let outchan = open_out outputname in
     let fmt = Format.formatter_of_out_channel outchan in
-    Printast.print_program true fmt E.program;
-    close_out outchan
-  else
-    Error.error []
-      (sprintf "Don't know what to do with filename: %s"
-         (Filename.basename Settings.filename))
+      Printast.print_program true fmt E.program;
+      close_out outchan
+      else
+        Error.error []
+          (sprintf "Don't know what to do with filename: %s"
+             (Filename.basename Settings.filename))
 
