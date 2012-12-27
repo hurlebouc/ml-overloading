@@ -60,7 +60,7 @@ let close_scheme tvs row : sch =
   tvs, map_row (substitute_fvars theta) row
 
 
-let close_scheme = failwith "Closure non implemented"
+(*let close_scheme = failwith "Closure non implemented"*)
 
 (* [matching sch typ] checks whether the codomain of [sch] is more general than 
    [typ], This is gven [sch] of the form [tvs, (ts, t)], it checks whether

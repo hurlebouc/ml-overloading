@@ -8,7 +8,7 @@ open Ast
 
 (* Read the file and parse the program. *)
 
-let Program (_, main) as program =
+let Program (_, _) as program =
   let channel = open_in Settings.filename in
   let lexbuf = Lexing.from_channel channel in
   lexbuf.Lexing.lex_curr_p <-
@@ -30,7 +30,7 @@ let Program (_, main) as program =
 
 (* Check well-formedness and perform alpha-conversion. *)
 module W = struct
-  let Program (prelude, main) = program 
+  let Program (prelude, _) = program 
   let dcenv, program = Wf.wf_program program
   let Program (_, iml) = program
   let _ = 
