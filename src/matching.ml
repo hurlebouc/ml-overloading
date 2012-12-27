@@ -69,4 +69,6 @@ let close_scheme tvs row : sch =
    the domain [ts] of [sch] instantiated by  [su].
    [su] is returned as an association list, not as a substitution *)
 
-let matching = failwith "Matching non implemented"
+      
+
+(*let matching = failwith "Matching non implemented"*)
