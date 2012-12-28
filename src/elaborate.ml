@@ -26,8 +26,40 @@ type env = {
   vvenv : vvenv;
   ivenv : Dn.t;
 }
+
 (* ------------------------------------------------------------------------- *)
+
 let rec elaborate_expr env (e : expression) : sch * expression =
+
+  (* fonction dispatchant les variables de terme dans les bons environnements *)
+
+  let rec make_new_env env = function
+    | [] -> env
+    | (None, x, s, _)::tl -> 
+        let env' = {
+          dcenv = env.dcenv; 
+          tvenv = env.tvenv;
+          vvenv = SM.add x s (env.vvenv);
+          ivenv = env.ivenv;
+        } in 
+          make_new_env env' tl
+    | (Some p, x, s, _)::tl ->
+        let rule = {
+          priority = p;
+          name = x;
+          sch = s
+        } in
+        let env' = {
+          dcenv = env.dcenv; 
+          tvenv = env.tvenv;
+          vvenv = env.vvenv;
+          ivenv = Dn.add (env.ivenv) rule;
+        } in 
+          make_new_env env' tl      
+  in
+
+(* ---------------------------- Filtrage de motifs ------------------------- *)
+
   match e with
     | EVar(x)-> 
         (
@@ -55,25 +87,28 @@ let rec elaborate_expr env (e : expression) : sch * expression =
                 ([], ([], t1)), (EApp(n1, n2))
             |_, _ -> Error.error [Error.Expr(e)] "Erreur"
         )
-    | EConApp(c, lt, le) -> Error.error [Error.Expr(e)] "Constructors not implemented"
-    | ELet(None, x, m1, m2) -> 
+    | EConApp(c, lt, le) -> Error.error [Error.Expr(e)] 
+                              "Constructors not implemented"
+    | ELet(p, x, m1, m2) -> 
         let (s1, n1) = elaborate_expr env m1 in
-        let nenv =
-          {
-            dcenv = env.dcenv; 
-            tvenv = env.tvenv;
-            vvenv = SM.add x s1 (env.vvenv);
-            ivenv = env.ivenv;
-          } in 
+        let nenv = make_new_env env [(p, x, s1, None)] in 
         let (s2, n2) = elaborate_expr nenv m2 in
           (s2, ELet(None, x, n1, n2))
-    | ELet(Some p, x, m1, m2) -> Error.error [Error.Expr(e)] "Implicit not yet implemented"
-    | ELetRec(l, m2) -> Error.error [Error.Expr(e)] "Not implemented"
+    | ELetRec(l, m2) ->
+        (*let nenv = *)
+        
+        
+        
+        
+        
+        
+        Error.error [Error.Expr(e)] "Not implemented"
     | EMatch(eps, l) -> Error.error [Error.Expr(e)] "Not yet implemented"
     | EImplicit(t) -> Error.error [Error.Expr(e)] "Not yet implemented"
     | EFunI(eps, x, t, m) -> Error.error [Error.Expr(e)] "Not yet implemented"
     | ELam(a,m) -> Error.error [Error.Expr(e)] "Not yet implemented"
     | ETapp(m,t) -> Error.error [Error.Expr(e)] "Not yet implemented"
+
 (* ------------------------------------------------------------------------- *)
 
 (* To conclude, apply the elaborator to the empty environment *)
