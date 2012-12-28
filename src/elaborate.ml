@@ -55,15 +55,25 @@ let rec elaborate_expr env (e : expression) : sch * expression =
                 ([], ([], t1)), (EApp(n1, n2))
             |_, _ -> Error.error [Error.Expr(e)] "Erreur"
         )
-    | EConApp(c, lt, le) -> Error.error [Error.Expr(e)] "Not yet implemented"
-    | ELet(eps, x, m0, m1) -> Error.error [Error.Expr(e)] "Ne semble pas etre\ 
-                                explicitement typee"
-    | ELetRec(l, m2) -> Error.error [Error.Expr(e)] "Erreur"
-    | EMatch(eps, l) -> Error.error [Error.Expr(e)] "Erreur"
-    | EImplicit(t) -> Error.error [Error.Expr(e)] "Erreur"
-    | EFunI(eps, x, t, m) -> Error.error [Error.Expr(e)] "Erreur"
-    | ELam(a,m) -> Error.error [Error.Expr(e)] "Erreur"
-    | ETapp(m,t) -> Error.error [Error.Expr(e)] "Erreur"
+    | EConApp(c, lt, le) -> Error.error [Error.Expr(e)] "Constructors not implemented"
+    | ELet(None, x, m1, m2) -> 
+        let (s1, n1) = elaborate_expr env m1 in
+        let nenv =
+          {
+            dcenv = env.dcenv; 
+            tvenv = env.tvenv;
+            vvenv = SM.add x s1 (env.vvenv);
+            ivenv = env.ivenv;
+          } in 
+        let (s2, n2) = elaborate_expr nenv m2 in
+          (s2, ELet(None, x, n1, n2))
+    | ELet(Some p, x, m1, m2) -> Error.error [Error.Expr(e)] "Implicit not yet implemented"
+    | ELetRec(l, m2) -> Error.error [Error.Expr(e)] "Not implemented"
+    | EMatch(eps, l) -> Error.error [Error.Expr(e)] "Not yet implemented"
+    | EImplicit(t) -> Error.error [Error.Expr(e)] "Not yet implemented"
+    | EFunI(eps, x, t, m) -> Error.error [Error.Expr(e)] "Not yet implemented"
+    | ELam(a,m) -> Error.error [Error.Expr(e)] "Not yet implemented"
+    | ETapp(m,t) -> Error.error [Error.Expr(e)] "Not yet implemented"
 (* ------------------------------------------------------------------------- *)
 
 (* To conclude, apply the elaborator to the empty environment *)
