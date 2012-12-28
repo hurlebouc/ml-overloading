@@ -68,41 +68,41 @@ let rec elaborate_expr env (e : expression) : sch * expression =
             | _ -> Error.error [Error.Expr(e)] "Erreur"
         )
     | EFun(x, t2, m1)-> 
-        let nenv =
-          {
-            dcenv = env.dcenv; 
-            tvenv = env.tvenv;
-            vvenv = SM.add x ([], ([], t2)) (env.vvenv);
-            ivenv = env.ivenv;
-          } in 
-          (
-            match elaborate_expr nenv m1 with
-              | (([],([],t1)) ,n1) -> ([],([],TArrow(t2, t1))), EFun(x, t2, n1)
-              |_ -> Error.error [Error.Expr(e)] "Erreur"
-          )
-    | EApp(m1, m2) -> 
-        (
-          match (elaborate_expr env m1), (elaborate_expr env m2) with
-            | (([],([],TArrow(t2, t1))), n1), (([],([],t2')), n2) when t2=t2'-> 
-                ([], ([], t1)), (EApp(n1, n2))
-            |_, _ -> Error.error [Error.Expr(e)] "Erreur"
+        let nenv = {
+          dcenv = env.dcenv; 
+          tvenv = env.tvenv;
+          vvenv = SM.add x ([], ([], t2)) (env.vvenv);
+          ivenv = env.ivenv;
+        } in (
+          match elaborate_expr nenv m1 with
+            | (([],([],t1)) ,n1) -> ([],([],TArrow(t2, t1))), EFun(x, t2, n1)
+            |_ -> Error.error [Error.Expr(e)] "Erreur"
         )
+    | EApp(m1, m2) -> (
+        match (elaborate_expr env m1), (elaborate_expr env m2) with
+          | (([],([],TArrow(t2, t1))), n1), (([],([],t2')), n2) when t2=t2'-> 
+              ([], ([], t1)), (EApp(n1, n2))
+          |_, _ -> Error.error [Error.Expr(e)] "Erreur"
+      )
     | EConApp(c, lt, le) -> Error.error [Error.Expr(e)] 
                               "Constructors not implemented"
     | ELet(p, x, m1, m2) -> 
         let (s1, n1) = elaborate_expr env m1 in
         let nenv = make_new_env env [(p, x, s1, None)] in 
-        let (s2, n2) = elaborate_expr nenv m2 in
+        let (s2, n2) = elaborate_expr nenv m2 in 
           (s2, ELet(None, x, n1, n2))
     | ELetRec(l, m2) ->
-        (*let nenv = *)
-        
-        
-        
-        
-        
-        
-        Error.error [Error.Expr(e)] "Not implemented"
+        let nenv = make_new_env env l in
+        let rec elab accu = function
+          | [] -> accu
+          | (_, x, s1, m1)::tl -> 
+              let (s1', n1) = elaborate_expr nenv m1 in
+                if s1 <> s1' then Error.error [Error.Expr(e)] "Erreur" else
+                  let accu' = (None, x, s1, n1)::accu in
+                    elab accu' tl
+        in
+        let (s2, n2) = elaborate_expr nenv m2 in 
+          (s2, ELetRec(elab [] l, n2))
     | EMatch(eps, l) -> Error.error [Error.Expr(e)] "Not yet implemented"
     | EImplicit(t) -> Error.error [Error.Expr(e)] "Not yet implemented"
     | EFunI(eps, x, t, m) -> Error.error [Error.Expr(e)] "Not yet implemented"
