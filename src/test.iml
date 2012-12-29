@@ -1,0 +1,6 @@
+type base = A
+type 'a t = T of 'a
+type ('a, 'b) truc = Mono | Simple of 'a * base | Double of 'a * 'b
+
+;;
+let obj = Mono [base, base] in obj 

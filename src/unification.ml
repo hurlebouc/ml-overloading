@@ -147,9 +147,10 @@ let read_back (vs : variable list) (state : U.state) : Type.substitution =
 
 (* ------------------------------------------------------------------------- *)
 
-(* Solving a unification problem involves: (i) dealing with each equation in
-   turn, building a graph of type [U.state]; and (ii) applying the read-back
-   procedure to obtain a most general unifier. *)
+(* Solving a unification problem involves: 
+ *  (i) dealing with each equation in turn, building a graph of type [U.state] 
+ *  (ii) applying the read-back procedure to obtain a most general unifier.
+ *)
 
 (*
 let mgu (Problem (vs, eqs)) : substitution =

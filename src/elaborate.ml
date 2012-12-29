@@ -31,7 +31,7 @@ type env = {
 
 let rec elaborate_expr env (e : expression) : sch * expression =
 
-  (* fonction dispatchant les variables de terme dans les bons environnements *)
+  (* fonction dispatchant les variables dans les bons environnements *)
 
   let rec make_new_env env = function
     | [] -> env
@@ -80,12 +80,46 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         )
     | EApp(m1, m2) -> (
         match (elaborate_expr env m1), (elaborate_expr env m2) with
-          | (([],([],TArrow(t2, t1))), n1), (([],([],t2')), n2) when t2=t2'-> 
+          | (([],([],TArrow(t2, t1))), n1), (([],([],t2')), n2) when t2=t2'->
+
+              (* Le "=" nest pas trop restrictif car les termes sont 
+               * explicitement spécifiés *)
+
               ([], ([], t1)), (EApp(n1, n2))
           |_, _ -> Error.error [Error.Expr(e)] "Erreur"
       )
-    | EConApp(c, lt, le) -> Error.error [Error.Expr(e)] 
-                              "Constructors not implemented"
+    | EConApp(c, lt, le) ->
+
+        let rec printlisteType = function
+          | [] -> ()
+          | h::t ->  
+              Printf.printf "%s\n" (to_string h);
+              printlisteType t;
+        in
+        let rec printlisteVar = function
+          | [] -> ()
+          | h::t ->  
+              Printf.printf "%s\n" h;
+              printlisteVar t;
+        in
+        let Wf.Scheme(tvl, tl, t) = SM.find c (env.dcenv) in
+        Printf.printf "Type constructeur : %s\n" (to_string t);
+        (*printlisteType tl;*)
+        printlisteVar tvl;
+        Error.error [Error.Expr(e)] "Constructors not implemented"
+
+
+
+
+
+
+
+
+
+
+
+
+
     | ELet(p, x, m1, m2) -> 
         let (s1, n1) = elaborate_expr env m1 in
         let nenv = make_new_env env [(p, x, s1, None)] in 
@@ -98,12 +132,15 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           | (_, x, s1, m1)::tl -> 
               let (s1', n1) = elaborate_expr nenv m1 in
                 if s1 <> s1' then Error.error [Error.Expr(e)] "Erreur" else
+                  
+                  (* De même ici *)
+                  
                   let accu' = (None, x, s1, n1)::accu in
                     elab accu' tl
         in
         let (s2, n2) = elaborate_expr nenv m2 in 
           (s2, ELetRec(elab [] l, n2))
-    | EMatch(eps, l) -> Error.error [Error.Expr(e)] "Not yet implemented"
+    | EMatch(eps, l) -> Error.error [Error.Expr(e)] "Match yet implemented"
     | EImplicit(t) -> Error.error [Error.Expr(e)] "Not yet implemented"
     | EFunI(eps, x, t, m) -> Error.error [Error.Expr(e)] "Not yet implemented"
     | ELam(a,m) -> Error.error [Error.Expr(e)] "Not yet implemented"
