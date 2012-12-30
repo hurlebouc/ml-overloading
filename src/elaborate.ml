@@ -2,6 +2,7 @@ open Ast
 open Type
 open Matching
 open Exproftype
+open Printf
 
 module SM = StringMap
 
@@ -89,11 +90,45 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           |_, _ -> Error.error [Error.Expr(e)] "Erreur"
       )
     | EConApp(c, lt, le) ->
+        let rec substitution f g (x : type_variable) = match f, g with
+          | h1::t1, h2::t2 -> if h1=x then h2 else substitution t1 t2 x
+          | _ -> Error.error [Error.Expr(e)] "Erreur ici"
+        in
+        let Wf.Scheme(tvl, lte, t) = SM.find c (env.dcenv) in
+        let g = substitution tvl lt in
+        let rec comp_arg le lte = match le, lte with
+          | h1::t1, h2::t2 -> (
+              let f x = Error.error [Error.Expr(e)] "unexpected..." in
+              match elaborate_expr env h1 with
+                | ([], ([], t)), n -> if t=(Type.lift f g h2)
+                  then n::(comp_arg t1 t2)
+                  else (
+                    printf "%s vs %s\n" (to_string t) (to_string (Type.lift f g h2));
+                    Error.error [Error.Expr(e)] "Types incompatibles"
+                  )
+                | _ -> Error.error [Error.Expr(e)] "On attend ici un type simple"
+                         (* De même ici *)
+            )
+          |[], [] -> []
+          |_ -> Error.error [Error.Expr(e)] "Les arités ne sont pas respectées"
+        in
+        let le' = comp_arg le lte in
+        let tc = match t with
+          | TConApp(name, _) -> name
+          |_ -> Error.error [Error.Expr(e)] "unexpected..."
+        in
 
-        let rec printlisteType = function
+
+        (*let rec printlisteType = function
           | [] -> ()
           | h::t ->  
-              Printf.printf "%s\n" (to_string h);
+              let s = match h with
+                | TFvar _ -> "TFvar"
+                | TGvar _ -> "TGvar"
+                | TArrow _ -> "TArrow"
+                | TConApp _ -> "TConApp"
+              in
+              Printf.printf "%s : %s \n" s (to_string h);
               printlisteType t;
         in
         let rec printlisteVar = function
@@ -102,11 +137,17 @@ let rec elaborate_expr env (e : expression) : sch * expression =
               Printf.printf "%s\n" h;
               printlisteVar t;
         in
-        let Wf.Scheme(tvl, tl, t) = SM.find c (env.dcenv) in
-        Printf.printf "Type constructeur : %s\n" (to_string t);
-        (*printlisteType tl;*)
+                  
+        Printf.printf "Type constructeur : %s : " (to_string t);
+        (
+          match t with
+            | TConApp (_, _) -> printf "TConApp\n"
+            | _ -> printf "pas TConApp"
+        );
+        printlisteType lte;
         printlisteVar tvl;
-        Error.error [Error.Expr(e)] "Constructors not implemented"
+        printlisteType lt;*)
+        ([], ([], TConApp(tc, lt))), EConApp(c, lt, le')
 
 
 

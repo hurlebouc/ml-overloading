@@ -17,7 +17,7 @@ open Ast
  * TConApp(name, type_variable list)
  * Les arguments de [scheme] sont
  *  - La liste des TOUTES les variables de type libres ayant servies à faire le
- *  type que construuit le constructeur
+ *  type que construit le constructeur
  *  - La liste des types des paramètres du constructeur (décrit avec les
  *  variables libres ayant servies lors de sa définition)
  *  - le type de retour (codomaine) du cnstructeur tel qu'il a été défini (c'est
