@@ -3,5 +3,5 @@ type 'a t = T of 'a
 type ('a, 'b) truc = Mono | Simple of 'a * base | Double of 'a * 'b
 
 ;;
-let obj = Simple [base, base] (A,A) in 
+let obj = Double [base, base] (A,A) in 
 let obj = A in obj
