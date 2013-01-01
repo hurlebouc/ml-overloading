@@ -1,7 +1,13 @@
-type base = A
+type base = A | B
+type base2 = X | Y
 type 'a t = T of 'a
 type ('a, 'b) truc = Mono | Simple of 'a * base | Double of 'a * 'b
 
 ;;
-let obj = Double [base, base] (A,A) in 
-let obj = A in obj
+let obj = Simple [base2, base] (Y,B) in 
+begin match obj with
+| Mono [base2 ,base] -> Y
+| Simple [base2, base] (x, y) -> x
+| Double [base2, base] (y, x) -> y
+end
+(*let obj = A in obj*)

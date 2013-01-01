@@ -5,3 +5,4 @@
 *.cmo
 joujou
 lexer.ml
+test.ml

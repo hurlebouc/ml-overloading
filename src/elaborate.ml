@@ -104,7 +104,8 @@ let rec elaborate_expr env (e : expression) : sch * expression =
                     | ([], ([], t)), n -> if t=(Type.lift f g h2)
                       then n::(comp_arg t1 t2)
                       else (
-                        printf "%s vs %s\n" (to_string t) (to_string (Type.lift f g h2));
+                        printf "Le type utilisé est %s\n" (to_string t);
+                        printf "alors que le type spécifié est %s\n"  (to_string (Type.lift f g h2));
                         Error.error [Error.Expr(e)] "Types incompatibles"
                       )
                     | _ -> Error.error [Error.Expr(e)] "On attend ici un type simple"
@@ -149,8 +150,8 @@ let rec elaborate_expr env (e : expression) : sch * expression =
             |_ -> Error.error [Error.Expr(m)] "L'expression devrait être typée comme constructeur de type"
           in
           let rec test_spec = function
-            (*| [] -> Error.error [Error.Expr(e)] "matching sans branche"*)
-            | [] -> []
+            | [] -> Error.error [Error.Expr(e)] "matching sans branche"
+            (*| [] -> []*)
             | hd::tail -> 
 
                 (* vérification de la cohérence des spécifications *)
@@ -170,23 +171,26 @@ let rec elaborate_expr env (e : expression) : sch * expression =
 
                         else let g = substitution alphabarre taubarre in
                         let f x = Error.error [Error.Expr(e)] "unexpected..." in
-                        let rec make_new_env_from_var = (function
+                        let rec make_new_env_from_var = function
                           | [], [] -> env
                           | xij::tailV, tij::tailT -> 
-                              let nenv' = make_new_env_from_var tail in
+                              let nenv' = make_new_env_from_var (tailV, tailT) in
                               let tij' = Type.lift f g tij in
-                                nenv = make_new_env nenv' [None, xij, ([], ([], tij')), None]
+                                make_new_env nenv' [None, xij, ([], ([], tij')), None]
+                          |_ -> Error.error [Error.Expr(e)] "problème d'arité"
                         in 
-                        let nenv = make_new_env_from_var xibarre tibarre in
-                        let (si, ni) = elaborate_expr nenv mi in 
-
-                          (* ... il faut encore vérifier que tous les mi sont un
-                          * meme constante *)
-
+                        let nenv = make_new_env_from_var (xibarre, tibarre) in
+                        let (si, ni) = elaborate_expr nenv mi in
+                          if tail = [] then si, [Branch(PConApp(dc, taubarre, xibarre), ni)] 
+                          else let (s, lp')  = test_spec tail in
+                            if s <> si then
+                              Error.error [Error.Expr(e)] "types de branches incompatibles"
+                            else 
+                              s, Branch(PConApp(dc, taubarre, xibarre), ni)::lp'
                       |_ ->  Error.error [Error.Expr(e)] "unexpected..."
           in
-          let lp' = test_spec lp in
-            EMatch(n, lp')
+          let (s, lp') = test_spec lp in
+            (s, EMatch(n, lp'))
 
 
 
