@@ -2,12 +2,44 @@ type base = A | B
 type base2 = X | Y
 type 'a t = T of 'a
 type ('a, 'b) truc = Mono | Simple of 'a * base | Double of 'a * 'b
+type 'a list =
+| Nil
+| Cons of 'a * 'a list
+
+type bool =
+| True
+| False
+
+
 
 ;;
+
+
+
+let rec map : 'a. 'b. ('a -> 'b) -> 'a list -> 'b list  =
+  Lam 'a 'b. 
+  fun (f : 'a -> 'b) -> fun (xs : 'a list) ->
+    begin match xs with
+    | Nil ['a] ->
+        Nil ['b]
+    | Cons ['a] (x, xs) ->
+        Cons ['b] (f x, map ['a, 'b] f xs)
+    end
+in
+
+let rec fold : 'b. 'b -> 'b = 
+  Lam 'b.
+
+  fun (accu : 'b) ->
+	accu
+in
+
+
 let obj = Simple [base2, base] (Y,B) in 
+
+
 begin match obj with
 | Mono [base2 ,base] -> Y
 | Simple [base2, base] (x, y) -> x
 | Double [base2, base] (y, x) -> y
 end
-(*let obj = A in obj*)
