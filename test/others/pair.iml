@@ -1,0 +1,26 @@
+(* -*- tuareg -*- *)
+
+type ('a, 'b) pair =
+  | Pair of 'a * 'b
+
+type nat =
+  | Zero
+  | Succ of nat
+
+;;
+
+let fst =
+  Lam 'a. Lam 'b. 
+  fun (p : ('a, 'b) pair) -> 
+    begin match p with | Pair ['a, 'b] (x, y) -> x end
+in
+
+let snd =
+  Lam 'a. Lam 'b. fun (p : ('a, 'b) pair) -> 
+    begin match p with | Pair ['a, 'b] (x, y) -> y end
+in
+
+let p = Pair [nat, nat] (Zero, Succ (Zero)) in
+
+Pair [nat, nat] (snd [nat, nat] p, fst  [nat, nat] p)
+

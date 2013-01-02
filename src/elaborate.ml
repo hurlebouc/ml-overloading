@@ -28,19 +28,33 @@ type env = {
   ivenv : Dn.t;
 }
 
-(* ------------------------------------------------------------------------- *)
+(* Fonction donnant la bonne formation d'un type (avec les liaisons) *)
 
-let rec elaborate_expr env (e : expression) : sch * expression =
+let rec bind_type_var env = function
+  | TFvar(x) when SM.mem x env.tvenv -> TGvar(x)
+  | TArrow(t1,t2) -> TArrow(bind_type_var env t1, bind_type_var env t2)
+  | TConApp(tc, tl) -> TConApp(tc, bind_typelist_var env tl)
+  | t -> t
+and bind_typelist_var env = function
+  | [] -> []
+  | h::t -> (bind_type_var env h)::(bind_typelist_var env t);;
 
-  (* fonction dispatchant les variables dans les bons environnements *)
+let bind_rg_var env = function
+  | (tl,t) -> (bind_typelist_var env tl, bind_type_var env t);;
 
-  let rec make_new_env env = function
+let bind_sch_var env = function
+  | (tvl, rg) -> (tvl, bind_rg_var env rg);;
+
+
+(* fonction dispatchant les variables dans les bons environnements *)
+
+let rec make_new_env env = function
     | [] -> env
     | (None, x, s, _)::tl -> 
         let env' = {
           dcenv = env.dcenv; 
           tvenv = env.tvenv;
-          vvenv = SM.add x s (env.vvenv);
+          vvenv = SM.add x (bind_sch_var env s) (env.vvenv);
           ivenv = env.ivenv;
         } in 
           make_new_env env' tl
@@ -48,7 +62,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         let rule = {
           priority = p;
           name = x;
-          sch = s
+          sch = bind_sch_var env s
         } in
         let env' = {
           dcenv = env.dcenv; 
@@ -56,212 +70,257 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           vvenv = env.vvenv;
           ivenv = Dn.add (env.ivenv) rule;
         } in 
-          make_new_env env' tl      
-  in
+          make_new_env env' tl;;      
+  
 
   (* fonction de substitution de types *)
 
-  let rec substitution f g (x : type_variable) = match f, g with
+exception Erreur of string
+
+let rec substitution f g (x : type_variable) = match f, g with
     | h1::t1, h2::t2 -> if h1=x then h2 else substitution t1 t2 x
-    | _ -> Error.error [Error.Expr(e)] "variable absente de la substitution"
-  in
+    | _ -> raise (Erreur "variable absente de la substitution");;
+  
 
-  let rec to_string = function
-    | TFvar(x) -> String.concat "" ["TFvar("; x; ")"]
-    | TGvar(x) -> String.concat "" ["TGvar("; x; ")"]
-    | TArrow(t1, t2) -> String.concat "" ["("; to_string t1 ; ")->("; to_string t2]
-    | TConApp(_,_) -> "caca" 
-  in
-  let print_type t = printf "(%s)" (to_string t) in
-  let print_rg = function
-    |(r, t) -> List.iter print_type r; printf "(%s)" (to_string t);
-  in
-  let rec print_sch : sch -> unit = function
-    | ([], rg) -> print_rg rg
-    | (x::tl, rg) -> printf "'%s " x; print_sch (tl, rg)
-  in
+  (* Fonction de test d'égalité de types*)
+
+  let rec equalsT t1 t2 = match t1, t2 with
+    | TFvar(x), TFvar(y) -> x=y
+    | TFvar(x), TGvar(y) -> x=y
+    | TGvar(x), TFvar(y) -> x=y
+    | TGvar(x), TGvar(y) -> x=y
+    | TArrow(a, b), TArrow(a',b') -> (equalsT a a') && (equalsT b b')
+    | TConApp(tc, tl), TConApp(tc', tl') -> (tc = tc') && (equalsTL tl tl')
+    |_ -> false
+
+  and equalsTL l1 l2 = match l1, l2 with
+    | [], [] -> true
+    | h1::t1, h2::t2 -> (equalsT h1 h2) && (equalsTL t1 t2)
+    | _ -> false;;
 
 
-    (* ---------------------------- Filtrage de motifs ------------------------- *)
+let equalsR r1 r2 = match r1, r2 with
+  | (tl1, t1), (tl2, t2) -> (equalsT t1 t2) && (equalsTL tl1 tl2);;
 
-    match e with
-      | EVar(x)->
+let equalsS s1 s2 = match s1, s2 with
+  | (tvl1, r1), (tvl2, r2) -> (tvl1 = tvl2) && (equalsR r1 r2);;
 
-          (* ici, le parser a normalement fait en sorte que si x : s est présent
-           * dans l'environnemnt de typage, et si s est en fait une variable de
-           * type, et que cette variable soit liée dans le "gros" terme par un
-           * quantifieur universel, alors s est de la forme [], ([], TGvar(a))
-           *
-           * Doit-on le revérifier ?
-           *)
+(* DEBUG : fonction d'impression de type, rang et schéma *)
 
-          (
-            try (StringMap.find x (env.vvenv)), e with
-              | Not_found -> Error.error [Error.Expr(e)] "Erreur"
-              | _ -> Error.error [Error.Expr(e)] "Erreur"
-          )
-      | EFun(x, t2, m1)-> 
-          printf "TEST : %s\n" (to_string t2);
-          let nenv = {
-            dcenv = env.dcenv; 
-            tvenv = env.tvenv;
-            vvenv = SM.add x ([], ([], t2)) (env.vvenv);
-            ivenv = env.ivenv;
-          } in (
-            match elaborate_expr nenv m1 with
-              | (([],([],t1)) ,n1) -> ([],([],TArrow(t2, t1))), EFun(x, t2, n1)
-              |_ -> Error.error [Error.Expr(e)] "Erreur"
-          )
-      | EApp(m1, m2) -> (
-          match (elaborate_expr env m1), (elaborate_expr env m2) with
-            | (([],([],TArrow(t2, t1))), n1), (([],([],t2')), n2) when t2=t2'->
+let rec to_string_details = function
+  | TFvar(x) -> String.concat "" ["TFvar("; x; ")"]
+  | TGvar(x) -> String.concat "" ["TGvar("; x; ")"]
+  | TArrow(t1, t2) -> String.concat "" ["("; to_string_details t1 ; ")->("; to_string_details t2]
+  | TConApp(_,_) -> "cons";;
 
+let print_type t = printf "(%s)" (to_string_details t) 
+let print_rg = function
+  |(r, t) -> List.iter print_type r; printf "(%s)" (to_string_details t); ;;
+
+let rec print_sch : sch -> unit = function
+  | ([], rg) -> print_rg rg
+  | (x::tl, rg) -> printf "'%s " x; print_sch (tl, rg);;
+  
+
+
+
+(* ------------------------------------------------------------------------- *)
+
+let rec elaborate_expr env (e : expression) : sch * expression =
+
+  match e with
+    | EVar(x)->
+        (
+          try (StringMap.find x (env.vvenv)), e with
+            | Not_found -> Error.error [Error.Expr(e)] "Erreur"
+            | _ -> Error.error [Error.Expr(e)] "Erreur"
+        )
+    | EFun(x, t2, m1)-> 
+        (*printf "TEST : %s\n" (to_string_details t2);*)
+        let t2 = bind_type_var env t2 in
+        let nenv = {
+          dcenv = env.dcenv; 
+          tvenv = env.tvenv;
+          vvenv = SM.add x ([], ([], t2)) (env.vvenv);
+          ivenv = env.ivenv;
+        } in (
+          match elaborate_expr nenv m1 with
+            | (([],([],t1)) ,n1) -> ([],([],TArrow(t2, t1))), EFun(x, t2, n1)
+            |_ -> Error.error [Error.Expr(e)] "Erreur"
+        )
+    | EApp(m1, m2) -> (
+        match (elaborate_expr env m1), (elaborate_expr env m2) with
+          | (([],([],TArrow(t2, t1))), n1), (([],([],t2')), n2) (*when t2=t2'*)->
+              (*if equalsT t2 t2' then*) 
+              if t2=t2' then
                 (* Le "=" nest pas trop restrictif car les termes sont 
                  * explicitement spécifiés *)
 
                 ([], ([], t1)), (EApp(n1, n2))
-            |_, _ -> Error.error [Error.Expr(e)] "Erreur"
-        )
-      | EConApp(c, lt, le) ->
-          let Wf.Scheme(tvl, lte, t) = SM.find c (env.dcenv) in
-          let g = substitution tvl lt in
-          let f x = Error.error [Error.Expr(e)] "unexpected..." in
-          let rec comp_arg le lte = match le, lte with
-            | h1::t1, h2::t2 -> (
-                match elaborate_expr env h1 with
+              else begin 
+                printf "Le type de l'argument est %s\n" (to_string t2');
+                printf "mais %s est attendu\n"  (to_string t2);
+                Error.error [Error.Expr(e)] "Types incompatibles"
+              end
+          |_, _ -> Error.error [Error.Expr(e)] "On attends ici des types simples"
+      )
+    | EConApp(c, lt, le) ->
+        let lt = bind_typelist_var env lt in
+        let Wf.Scheme(tvl, lte, tdef) = SM.find c (env.dcenv) in
+        let g = substitution tvl lt in
+        let f x = Error.error [Error.Expr(e)] "unexpected..." in
+        let rec comp_arg le lte = match le, lte with
+          | h1::t1, h2::t2 -> (
+              match elaborate_expr env h1 with
+                (*| ([], ([], t)), n -> if equalsT t (Type.lift f g h2)*)
                   | ([], ([], t)), n -> if t=(Type.lift f g h2)
-                    then n::(comp_arg t1 t2)
-                    else (
-                      printf "Le type utilisé est %s\n" (to_string t);
-                      printf "alors que le type spécifié est %s\n"  (to_string (Type.lift f g h2));
-                      Error.error [Error.Expr(e)] "Types incompatibles"
-                    )
-                  | _ -> Error.error [Error.Expr(e)] "On attend ici un type simple"
-              (* De même ici *)
-              )
-            |[], [] -> []
-            |_ -> Error.error [Error.Expr(e)] "Les arités ne sont pas respectées"
-          in
-          let le' = comp_arg le lte in
-          let tc = match t with
-            | TConApp(name, _) -> name
-            |_ -> Error.error [Error.Expr(e)] "unexpected..."
-          in
-            ([], ([], TConApp(tc, lt))), EConApp(c, lt, le')
-      | ELet(p, x, m1, m2) -> 
-          let (s1, n1) = elaborate_expr env m1 in
-          let nenv = make_new_env env [(p, x, s1, None)] in 
-          let (s2, n2) = elaborate_expr nenv m2 in 
-            (s2, ELet(None, x, n1, n2))
-      | ELetRec(l, m2) ->
-          let nenv = make_new_env env l in
-          let rec elab accu = function
-            | [] -> accu
-            | (_, x, s1, m1)::tl -> 
-                let (s1', n1) = elaborate_expr nenv m1 in
-                  if s1 <> s1' then begin
-                    print_sch s1;
-                    printf "\n";
-                    print_sch s1';
-                    printf "\n";
-                    Error.error [Error.Expr(m1)] "Erreur" 
-                  end
 
-                      (* De même ici *)
+                  (* De même ici *)
 
-                  else
-                    let accu' = (None, x, s1, n1)::accu in
-                      elab accu' tl
-          in
-          let (s2, n2) = elaborate_expr nenv m2 in (s2, ELetRec(elab [] l, n2))
-      | EMatch(m, lp) -> 
+                  then n::(comp_arg t1 t2)
+                  else (
+                    printf "Le type utilisé est \t\t%s\n" (to_string t);
+                    printf "alors que le type spécifié est \t%s\n"  (to_string (Type.lift f g h2));
+                    Error.error [Error.Expr(h1)] "Types incompatibles"
+                  )
+                | _ -> Error.error [Error.Expr(h1)] "On attend ici un type simple" 
+            )
+          |[], [] -> []
+          |_ -> Error.error [Error.Expr(e)] "Les arités ne sont pas respectées"
+        in
+        let le' = comp_arg le lte in
+        let tc = match tdef with
+          | TConApp(name, _) -> name
+          |_ -> Error.error [Error.Expr(e)] "unexpected..."
+        in
+          ([], ([], TConApp(tc, lt))), EConApp(c, lt, le')
+    | ELet(p, x, m1, m2) -> 
+        let (s1, n1) = elaborate_expr env m1 in
+        let nenv = make_new_env env [(p, x, s1, None)] in
+        (* Ici le test de liaison n'est a priori pas obligatoire *)
+        let (s2, n2) = elaborate_expr nenv m2 in 
+          (s2, ELet(None, x, n1, n2))
+    | ELetRec(l, m2) ->
+        let nenv = make_new_env env l in
+        let rec elab accu = function
+          | [] -> accu
+          | (_, x, s1, m1)::tl ->
+              let s1 = bind_sch_var env s1 in
+              let (s1', n1) = elaborate_expr nenv m1 in
+                (*if not (equalsS s1 s1') then begin*)
+                if s1<>s1' then begin
+                  printf "le type utilisé est \t\t";
+                  print_sch s1';
+                  printf "\nalors que le type spécifié est \t";
+                  print_sch s1;
+                  printf "\n";
+                  Error.error [Error.Expr(m1)] "Types incompatibles" 
+                end
 
-          (* vérification du type de M*)
+                (* De même ici *)
 
-          let (s, n) = elaborate_expr env m in
-          let (tc, taubarre) = match s with 
-            | [], ([], TConApp(tc, taubarre)) -> (tc, taubarre)
-            |_ -> Error.error [Error.Expr(m)] "L'expression devrait être typée comme constructeur de type"
-          in
-          let rec test_spec = function
-            | [] -> Error.error [Error.Expr(e)] "matching sans branche"
-            (*| [] -> []*)
-            | hd::tail -> 
+                else
+                  let accu' = (None, x, s1, n1)::accu in
+                    elab accu' tl
+        in
+        let res = elab [] l in
+        let (s2, n2) = elaborate_expr nenv m2 in 
+          (s2, ELetRec(res, n2))
+    | EMatch(m, lp) -> 
 
-                (* vérification de la cohérence des spécifications *)
+        (* vérification du type de M*)
 
-                let Branch(PConApp(dc, tauibarre, xibarre), mi) = hd in
-                  if tauibarre <> taubarre then
-                    Error.error [Error.Expr(e)] "spécifications incompatibles"
+        let (s, n) = elaborate_expr env m in
+        let (tc, taubarre) = match s with 
+          | [], ([], TConApp(tc, taubarre)) -> (tc, taubarre)
+          |_ -> Error.error [Error.Expr(m)] "L'expression devrait être typée comme constructeur de type"
+        in
+        let rec test_spec = function
+          | [] -> Error.error [Error.Expr(e)] "matching sans branche"
+          (*| [] -> []*)
+          | hd::tail -> 
 
-                  (* vérification de la cohérence des codomaines *)
+              (* vérification de la cohérence des spécifications *)
 
-                  else let Wf.Scheme(alphabarre, tibarre, t) = SM.find dc (env.dcenv) in
-                    match t with
-                      | TConApp(tc', _) -> if tc'<>tc then
-                          Error.error [Error.Expr(e)] "codomaines incompatibles"
+              let Branch(PConApp(dc, tauibarre, xibarre), mi) = hd in
+              let tauibarre = bind_typelist_var env tauibarre in
+                (*if not (equalsTL tauibarre taubarre) then *)
+                if tauibarre<>taubarre then
+                  Error.error [Error.Expr(e)] "spécifications incompatibles"
 
-                        (* vérification de la cohérence du type des branches *)
+                (* vérification de la cohérence des codomaines *)
 
-                        else let g = substitution alphabarre taubarre in
-                        let f x = Error.error [Error.Expr(e)] "unexpected..." in
-                        let rec make_new_env_from_var = function
-                          | [], [] -> env
-                          | xij::tailV, tij::tailT -> 
-                              let nenv' = make_new_env_from_var (tailV, tailT) in
-                              let tij' = Type.lift f g tij in
-                                make_new_env nenv' [None, xij, ([], ([], tij')), None]
-                          |_ -> Error.error [Error.Expr(e)] "problème d'arité"
-                        in 
-                        let nenv = make_new_env_from_var (xibarre, tibarre) in
-                        let (si, ni) = elaborate_expr nenv mi in
-                          if tail = [] then si, [Branch(PConApp(dc, taubarre, xibarre), ni)] 
-                          else let (s, lp')  = test_spec tail in
-                            if s <> si then
-                              Error.error [Error.Expr(e)] "types de branches incompatibles"
-                            else 
+                else let Wf.Scheme(alphabarre, tibarre, t) = SM.find dc (env.dcenv) in
+                  match t with
+                    | TConApp(tc', _) -> if tc'<>tc then
+                        Error.error [Error.Expr(e)] "codomaines incompatibles"
+
+                      (* vérification de la cohérence du type des branches *)
+
+                      else let g = substitution alphabarre taubarre in
+                      let f x = Error.error [Error.Expr(e)] "unexpected..." in
+                      let rec make_new_env_from_var = function
+                        | [], [] -> env
+                        | xij::tailV, tij::tailT -> 
+                            let nenv' = make_new_env_from_var (tailV, tailT) in
+                            let tij' = Type.lift f g tij in
+                              make_new_env nenv' [None, xij, ([], ([], tij')), None]
+                                (* Le test de laison n'est pas obligatoire ici *)
+                        |_ -> Error.error [Error.Expr(e)] "problème d'arité"
+                      in 
+                      let nenv = make_new_env_from_var (xibarre, tibarre) in
+                      let (si, ni) = elaborate_expr nenv mi in
+                        if tail = [] then si, [Branch(PConApp(dc, taubarre, xibarre), ni)] 
+                        else let (s, lp')  = test_spec tail in
+                          (*if not (equalsS s si) then*)
+                          if s<>si then
+                            Error.error [Error.Expr(e)] "types de branches incompatibles"
+                          else 
                               s, Branch(PConApp(dc, taubarre, xibarre), ni)::lp'
-                      |_ ->  Error.error [Error.Expr(e)] "unexpected..."
-          in
-          let (s, lp') = test_spec lp in
-            (s, EMatch(n, lp'))
-      | EImplicit(t) -> Error.error [Error.Expr(e)] "Not yet implemented"
-      | EFunI(eps, x, t, m) -> Error.error [Error.Expr(e)] "Not yet implemented"
-      | ELam(a,m) ->
-          let rec make_new_env_from_TV = function
-            | [] -> env
-            | hd::tl -> 
-                let nenv' = make_new_env_from_TV tl in {
-                  dcenv = nenv'.dcenv; 
-                  tvenv = SM.add hd () (nenv'.tvenv);
-                  vvenv = nenv'.vvenv;
-                  ivenv = nenv'.ivenv;
-                } 
-          in
-          let nenv = make_new_env_from_TV a in
-          let (s, n) = elaborate_expr nenv m in 
-          let a', r = s in
-            ((a@a', r), ELam(a,n))
-            
-      (*(
-       match s with
-       |[], r -> ((a, r), ELam(a,n))
-       |_ -> Error.error [Error.Expr(e)] "Polymorphisme non permis ici"
-       )*)    
-      | ETapp(m,lt) -> 
-          let (la, r), n = elaborate_expr env m in
-          let g = substitution la lt in
-          let lift_row = List.map (Type.lift (fun x -> TFvar(x)) g) in
-          let (timp, t) = r in
-            ([], ((lift_row timp), Type.lift (fun x -> TFvar(x)) g t )), ETapp(n, lt)
-          
-          
-          
-          
-          
-          
-          
-         
+                    |_ ->  Error.error [Error.Expr(e)] "unexpected..."
+        in
+        let (s, lp') = test_spec lp in
+          (s, EMatch(n, lp'))
+    | EImplicit(t) -> Error.error [Error.Expr(e)] "Not yet implemented"
+    | EFunI(eps, x, t, m) -> Error.error [Error.Expr(e)] "Not yet implemented"
+    | ELam(a,m) ->
+        let rec make_new_env_from_TV = function
+          | [] -> env
+          | hd::tl -> 
+              let nenv' = make_new_env_from_TV tl in {
+                dcenv = nenv'.dcenv; 
+                tvenv = SM.add hd () (nenv'.tvenv);
+                vvenv = nenv'.vvenv;
+                ivenv = nenv'.ivenv;
+              } 
+        in
+        let nenv = make_new_env_from_TV a in
+        let (s, n) = elaborate_expr nenv m in 
+        let a', r = s in
+          ((a@a', r), ELam(a,n))
+
+    (*(
+     match s with
+     |[], r -> ((a, r), ELam(a,n))
+     |_ -> Error.error [Error.Expr(e)] "Polymorphisme non permis ici"
+     )*)    
+    | ETapp(m,lt) ->
+        let lt = bind_typelist_var env lt in
+        let (la, r), n = elaborate_expr env m in
+        (*print_sch (la, r); printf "\n";*)
+        (*List.iter (fun x -> printf "%s " (to_string x)) lt; printf "\n";*)
+        let g = substitution la lt in
+        let lift_row = List.map (Type.lift (fun x -> printf "beep1\n"; TFvar(x)) g) in
+        let (timp, t) = r in
+          ([], ((lift_row timp), Type.lift (fun x -> printf "beep2\n"; TFvar(x)) g t)), ETapp(n, lt)
+
+
+
+
+
+
+
+
 
 (* ------------------------------------------------------------------------- *)
 

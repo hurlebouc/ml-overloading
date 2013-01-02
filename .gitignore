@@ -6,3 +6,6 @@
 joujou
 lexer.ml
 test.ml
+test/good/list.ml
+test/good/pair.ml
+test/others/pair.ml

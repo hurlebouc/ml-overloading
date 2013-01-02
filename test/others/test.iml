@@ -11,10 +11,21 @@ type bool =
 | False
 
 
+type ('a, 'b) pair =
+  | Pair of 'a * 'b
+
+type nat =
+  | Zero
+  | Succ of nat
 
 ;;
 
+let rec fold : 'b. 'b -> 'b = 
+  Lam 'b.
 
+  fun (accu : 'b) ->
+	accu
+in
 
 let rec map : 'a. 'b. ('a -> 'b) -> 'a list -> 'b list  =
   Lam 'a 'b. 
@@ -26,14 +37,6 @@ let rec map : 'a. 'b. ('a -> 'b) -> 'a list -> 'b list  =
         Cons ['b] (f x, map ['a, 'b] f xs)
     end
 in
-
-let rec fold : 'b. 'b -> 'b = 
-  Lam 'b.
-
-  fun (accu : 'b) ->
-	accu
-in
-
 
 let obj = Simple [base2, base] (Y,B) in 
 
