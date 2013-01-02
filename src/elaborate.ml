@@ -28,7 +28,11 @@ type env = {
   ivenv : Dn.t;
 }
 
-(* Fonction donnant la bonne formation d'un type (avec les liaisons) *)
+(* Fonction donnant la bonne formation d'un type (avec les liaisons) 
+ *
+ * TODO améliorer l'efficacité de la création de nouveau environnement : le test
+ * de liaison des variables de types n'est pas obligatoire à chaque fois.
+ *)
 
 let rec bind_type_var env = function
   | TFvar(x) when SM.mem x env.tvenv -> TGvar(x)
@@ -105,6 +109,16 @@ let equalsR r1 r2 = match r1, r2 with
 let equalsS s1 s2 = match s1, s2 with
   | (tvl1, r1), (tvl2, r2) -> (tvl1 = tvl2) && (equalsR r1 r2);;
 
+(* fonction de résolution des arguments implicites *)
+
+let rec resolve_imp env (s : sch) (n : expression) = match s with
+  | [], (tau::rho, t) -> 
+      let n0 = exproftype env.ivenv tau in
+      let s' = ([], (rho, t)) in
+      let n' = EApp(n, n0) in
+        resolve_imp env s' n'
+  |_ -> s, n
+
 (* DEBUG : fonction d'impression de type, rang et schéma *)
 
 let rec to_string_details = function
@@ -120,9 +134,6 @@ let print_rg = function
 let rec print_sch : sch -> unit = function
   | ([], rg) -> print_rg rg
   | (x::tl, rg) -> printf "'%s " x; print_sch (tl, rg);;
-  
-
-
 
 (* ------------------------------------------------------------------------- *)
 
@@ -131,7 +142,9 @@ let rec elaborate_expr env (e : expression) : sch * expression =
   match e with
     | EVar(x)->
         (
-          try (StringMap.find x (env.vvenv)), e with
+          try 
+            resolve_imp env (StringMap.find x (env.vvenv)) e 
+          with
             | Not_found -> Error.error [Error.Expr(e)] "Erreur"
             | _ -> Error.error [Error.Expr(e)] "Erreur"
         )
@@ -281,8 +294,18 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         in
         let (s, lp') = test_spec lp in
           (s, EMatch(n, lp'))
-    | EImplicit(t) -> Error.error [Error.Expr(e)] "Not yet implemented"
-    | EFunI(eps, x, t, m) -> Error.error [Error.Expr(e)] "Not yet implemented"
+    | EImplicit(t) ->
+        let t = bind_type_var env t in
+        let n = exproftype env.ivenv t in
+          ([], ([], t)), n
+    | EFunI(p, x, t, m) -> 
+        let t = bind_type_var env t in
+        let nenv = make_new_env env [Some p, x, ([], ([], t)), None] in
+        let (s, n) = elaborate_expr nenv m in (
+          match s with
+          | ([], (r, tl)) -> ([], (t::r, tl)), EFun(x, t, n)
+          |_ -> Error.error [Error.Expr(m)] "Cette expression ne peut être polymorphe."
+        )
     | ELam(a,m) ->
         let rec make_new_env_from_TV = function
           | [] -> env
@@ -310,17 +333,12 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         (*print_sch (la, r); printf "\n";*)
         (*List.iter (fun x -> printf "%s " (to_string x)) lt; printf "\n";*)
         let g = substitution la lt in
-        let lift_row = List.map (Type.lift (fun x -> printf "beep1\n"; TFvar(x)) g) in
+        let lift_row = List.map (Type.lift (fun x -> TFvar(x)) g) in
         let (timp, t) = r in
-          ([], ((lift_row timp), Type.lift (fun x -> printf "beep2\n"; TFvar(x)) g t)), ETapp(n, lt)
-
-
-
-
-
-
-
-
+        let s' = ([], ((lift_row timp), Type.lift (fun x -> TFvar(x)) g t)) in
+        let n' = ETapp(n, lt) in
+          resolve_imp env s' n'
+          (*([], ((lift_row timp), Type.lift (fun x -> TFvar(x)) g t)), ETapp(n, lt)*)
 
 (* ------------------------------------------------------------------------- *)
 
