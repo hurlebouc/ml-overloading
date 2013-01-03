@@ -32,6 +32,10 @@ type env = {
  *
  * TODO améliorer l'efficacité de la création de nouveau environnement : le test
  * de liaison des variables de types n'est pas obligatoire à chaque fois.
+ * TODO utiliser les fonctions du prof plutôt que les miennes :
+ *    - sch_as_XXX au lieu de mes match
+ *    - close_scheme au lieu de bind_XXX_var
+ *    _ Printast.print_XXX au lieu de print_XXX
  *)
 
 let rec bind_type_var env = function
@@ -77,7 +81,7 @@ let rec make_new_env env = function
           make_new_env env' tl;;      
   
 
-  (* fonction de substitution de types *)
+(* fonction de substitution de types *)
 
 exception Erreur of string
 
@@ -86,7 +90,7 @@ let rec substitution f g (x : type_variable) = match f, g with
     | _ -> raise (Erreur "variable absente de la substitution");;
   
 
-  (* Fonction de test d'égalité de types*)
+(* Fonction de test d'égalité de types*)
 
   let rec equalsT t1 t2 = match t1, t2 with
     | TFvar(x), TFvar(y) -> x=y
@@ -139,14 +143,16 @@ let rec print_sch : sch -> unit = function
 
 let rec elaborate_expr env (e : expression) : sch * expression =
 
+ (*printf "expression : %s\n\n" (Printast.expr_to_string e); *)
+
   match e with
     | EVar(x)->
         (
           try 
             resolve_imp env (StringMap.find x (env.vvenv)) e 
           with
-            | Not_found -> Error.error [Error.Expr(e)] "Erreur"
-            | _ -> Error.error [Error.Expr(e)] "Erreur"
+            | _ -> try resolve_imp env (Dn.get env.ivenv x) e with
+                | _ -> Error.error [Error.Expr(e)] "Autant pour moi..."
         )
     | EFun(x, t2, m1)-> 
         (*printf "TEST : %s\n" (to_string_details t2);*)
@@ -159,7 +165,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         } in (
           match elaborate_expr nenv m1 with
             | (([],([],t1)) ,n1) -> ([],([],TArrow(t2, t1))), EFun(x, t2, n1)
-            |_ -> Error.error [Error.Expr(e)] "Erreur"
+            |_ -> Error.error [Error.Expr(e)] "On attend ici un type simple"
         )
     | EApp(m1, m2) -> (
         match (elaborate_expr env m1), (elaborate_expr env m2) with

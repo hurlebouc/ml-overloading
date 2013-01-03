@@ -33,9 +33,9 @@ let sch_as_dccon sch =
  variable of  [row] are in tvs *)
 let assert_wf_scheme (tvs, (ts, t)) =
   let gv x = assert (List.mem x tvs) in
-let fv x = assert (not (List.mem x tvs)) in
-  List.iter (Type.iter fv gv) ts; Type.iter fv gv t;
-  true
+  let fv x = assert (not (List.mem x tvs)) in
+    List.iter (Type.iter fv gv) ts; Type.iter fv gv t;
+    true
 
 module Var = Type.Var
 
@@ -53,11 +53,12 @@ let substitute_gvars theta t =
 (* [close_scheme tvs row]  builds the scheme tvs, row' by making variables tvs
  generic in [row'] *)
 let map_row f (ts, t) = List.map f ts, f t
+
 let close_scheme tvs row : sch =
   let theta =
     List.fold_left (fun m tv -> Var.Map.add tv (TGvar tv) m)
       Var.Map.empty tvs in
-  tvs, map_row (substitute_fvars theta) row
+    tvs, map_row (substitute_fvars theta) row
 
 
 (*let close_scheme = failwith "Closure non implemented"*)

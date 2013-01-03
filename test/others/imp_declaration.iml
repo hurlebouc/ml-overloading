@@ -1,0 +1,21 @@
+type nat =
+| Z
+| S of nat
+
+type char =
+| A | B | C
+
+type bool =
+| True
+| False
+;;
+
+let ?cast = Lam 'a. fun (x : 'a) -> x in
+
+(*let ?nat2bool = fun (x : nat) -> 
+begin match x with Z -> True | S _ -> False end 
+in*)
+
+let  cast = Lam 'a. fun (x : 'a) -> x in
+
+cast
