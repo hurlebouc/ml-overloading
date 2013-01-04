@@ -47,9 +47,11 @@ module Dn : DN = struct
   let empty = { low = []; normal = []; high = [] }
 
 
-  let find (m : t) (t : typ) : rule list =
+  let find (m : t) (t0 : typ) : rule list =
     failwith "Not implemented"
 
+  (* Il faut améliorer la fonction d'ajout en la rendant plus restrictives sur
+   * les ambiguités *)
 
   let add (m : t) (rule : rule) : t =
     match rule.priority with
