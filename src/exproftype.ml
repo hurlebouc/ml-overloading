@@ -48,7 +48,7 @@ module Dn : DN = struct
 
 
   let find (m : t) (t0 : typ) : rule list =
-    failwith "Not implemented"
+    failwith "Matching non implemented"
 
   (* Il faut améliorer la fonction d'ajout en la rendant plus restrictives sur
    * les ambiguités *)

@@ -11,3 +11,4 @@ test/good/pair.ml
 test/others/pair.ml
 imp_declaration.ml
 record.ml
+trans.ml

@@ -54,7 +54,7 @@ type type_constructor =
  * exemple, le parser donnera la valeur ['b ((TGvar(b))->(TGvar(b))] à
  * l'annotation alors que lors de la reconstruction du type de l'expression dans
  * l'élaboration, le type trouvé sera ['b ((TFvar(b))->(TFvar(b))]. À cela il y a
- * plusieurs solution
+ * plusieurs solutions
  *   - lors des tests d'égalité de types, on fera attention à égaliser TGvar et
  *   TFvar
  *   - lors de la mise en environnement de variables de termes, on vérifiera si

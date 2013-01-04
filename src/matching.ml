@@ -72,4 +72,57 @@ let close_scheme tvs row : sch =
 
 
 
-(*let matching = failwith "Matching non implemented"*)
+let matching (s : sch) (t0 : typ) = 
+  let rec checkadd accu (x : type_variable) (t : typ) = function
+    | [] -> Some ((x,t)::accu)
+    | (x',t')::tail as l -> 
+        if x <> x' then checkadd ((x', t')::accu) x t tail else
+          if t <> t' then None else Some (accu @ l)
+  in let checkadd = checkadd [] in
+
+  let rec matching_aux lmatch tvs t t0 = match t, t0 with
+    | TFvar(x), TFvar(x') when x=x' -> Some lmatch
+    | TGvar(x), t when List.mem x tvs -> checkadd x t lmatch
+    | TArrow(t1,t2), TArrow(t1', t2') -> (
+        match matching_aux lmatch tvs t1 t1' with
+          | Some l -> matching_aux l tvs t2 t2'
+          | None -> None
+      )
+    | TConApp(tc, tl), TConApp(tc', tl') when tc = tc' ->
+        matching_aux_list lmatch tvs tl tl'
+    | _ -> None
+  and matching_aux_list lmatch tvs tl tl' = match tl, tl' with
+    | [], [] -> Some lmatch
+    | head::tail, head'::tail' -> (
+        match matching_aux lmatch tvs head head' with
+          | Some l -> matching_aux_list l tvs tail tail'
+          | None -> None
+      )
+    | _ -> failwith "On est pas sorti du sable..."
+  in
+
+  let (tvs, (r, t)) = s in
+    match matching_aux [] tvs t t0 with
+      | None -> None
+      | Some lmatch -> 
+          
+          (* On test l'inclusion de tvs dans lmatch*)
+          
+          let rec test tvs = match tvs with
+            | [] -> true
+            | h::t -> (List.exists (fun (x,y) -> h=x) lmatch) && test t in
+            if not(test tvs) then None else
+
+              (* Construit le domaine instancié par tvs *)
+
+              let g x = 
+                let (x, t) = List.find (fun (y,z) -> y=x) lmatch in
+                  t in
+              let f x = failwith "Oups..." in
+              let rec builddom = function
+                | [] -> []
+                | h::t -> (Type.lift f g h)::(builddom t) in
+              let tsi = builddom r in
+                Some (lmatch, tsi)
+          
+          
