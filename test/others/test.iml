@@ -3,12 +3,12 @@ type base2 = X | Y
 type 'a t = T of 'a
 type ('a, 'b) truc = Mono | Simple of 'a * base | Double of 'a * 'b
 type 'a list =
-| Nil
-| Cons of 'a * 'a list
+  | Nil
+  | Cons of 'a * 'a list
 
 type bool =
-| True
-| False
+  | True
+  | False
 
 
 type ('a, 'b) pair =
@@ -21,12 +21,12 @@ type nat =
 ;;
 
 let rec fold : 'x. 'x -> 'x =
-(*let rec fold : 'x. 'y. 'x -> bool -> 'y =*)
-(*let rec fold : 'b. 'b -> 'b =*)
+  (*let rec fold : 'x. 'y. 'x -> bool -> 'y =*)
+  (*let rec fold : 'b. 'b -> 'b =*)
   Lam 'b.
 
   fun (accu : 'b) ->
-	accu
+    accu
 in
 
 let rec map : 'a. 'b. ('a -> 'b) -> 'a list -> 'b list  =
@@ -47,4 +47,4 @@ begin match obj with
 | Mono [base2 ,base] -> Y
 | Simple [base2, base] (x, y) -> x
 | Double [base2, base] (y, x) -> y
-end
+    end

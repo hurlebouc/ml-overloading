@@ -171,7 +171,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
             SM.find x env.vvenv
           with
             | _ -> try Dn.get env.ivenv x with
-                | _ -> Error.error [Error.Expr(e)] "Ce n'est pas ces variables que vous recherchez..."
+                | _ -> Error.error [Error.Expr(e)] "unexpected..."
         )
         in
         (*let (tv,r) = close_scheme tv r in*)
@@ -209,7 +209,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         (*let lt = bind_typelist_var env lt in*)
         let Wf.Scheme(tvl, lte, tdef) = SM.find c (env.dcenv) in
         let g = substitution tvl lt in
-        let f x = Error.error [Error.Expr(e)] "unexpected..." in
+        let f x = Error.error [Error.Expr(e)] "Ce ne sont pas ces variables que vous recherchez..." in
         let rec comp_arg le lte = match le, lte with
           | h1::t1, h2::t2 -> (
               match elaborate_expr env h1 with

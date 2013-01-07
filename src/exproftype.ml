@@ -35,6 +35,7 @@ end
 
  However, a naive implementation may just return all rules. *)
 
+
 module Dn : DN = struct
   type t = {
     low : rule list;
@@ -46,9 +47,12 @@ module Dn : DN = struct
 
   let empty = { low = []; normal = []; high = [] }
 
+  (* cette fonction est inutiles (ses entrées-sorties) ne me permettent pas de
+   * faire grand chose d'intéressant
+   *)
 
   let find (m : t) (t0 : typ) : rule list =
-    failwith "Matching non implemented"
+    failwith "I'm a poor lonesome function..."
 
   (* Il faut améliorer la fonction d'ajout en la rendant plus restrictives sur
    * les ambiguités *)
@@ -81,6 +85,8 @@ module Dn : DN = struct
 
 end
 
+(* Cette fonction gère les appeles récursifs de la règle et vérifie que les
+ * crit!ères de terminaisons sont respecté *)
 
 let exproftype (ivenv : Dn.t) (t : typ) : expression =
-  failwith "Not implemented yet"
+  failwith "It's the hard law of the West!"
