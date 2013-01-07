@@ -60,13 +60,12 @@ let close_scheme tvs row : sch =
   tvs, map_row (substitute_fvars theta) row
 
 
-let close_scheme = failwith "Non implemented"
 
 (* [matching sch typ] checks whether the codomain of [sch] is more general than 
    [typ], This is gven [sch] of the form [tvs, (ts, t)], it checks whether
    variables [tvs] can be instantiated so that [t] becomes equal to [typ].
-   It then returns a mapping [su] from each variable of [tvs] to its instance, and
-   the domain [ts] of [sch] instantiated by  [su].
+   It then returns a mapping [su] from each variable of [tvs] to its instance,
+   and the domain [ts] of [sch] instantiated by  [su].
    [su] is returned as an association list, not as a substitution *)
 
 let matching = failwith "Non implemented"
