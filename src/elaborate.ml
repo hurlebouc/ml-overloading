@@ -31,25 +31,33 @@ type env = {
 (* Fonction donnant la bonne formation d'un type (avec les liaisons) 
  *
  * TODO améliorer l'efficacité de la création de nouveau environnement : le test
- * de liaison des variables de types n'est pas obligatoire à chaque fois.
+ * de liaison des variables de types n'est pas obligatoire à chaque fois. DONE
+ *
  * TODO utiliser les fonctions du prof plutôt que les miennes :
  *    - sch_as_XXX au lieu de mes match
  *    - close_scheme au lieu de bind_XXX_var
  *    _ Printast.print_XXX au lieu de print_XXX
+ * TODO vérifier que close_scheme ne doit pas être appliqué dans d'autres cas
+ * que l'abstraction de type
  *)
 
+(* Deprecated *)
 let rec bind_type_var env = function
   | TFvar(x) when SM.mem x env.tvenv -> TGvar(x)
   | TArrow(t1,t2) -> TArrow(bind_type_var env t1, bind_type_var env t2)
   | TConApp(tc, tl) -> TConApp(tc, bind_typelist_var env tl)
   | t -> t
+
+(* Deprecated *)
 and bind_typelist_var env = function
   | [] -> []
   | h::t -> (bind_type_var env h)::(bind_typelist_var env t);;
 
+(* Deprecated *)
 let bind_rg_var env = function
   | (tl,t) -> (bind_typelist_var env tl, bind_type_var env t);;
 
+(* Deprecated *)
 let bind_sch_var env = function
   | (tvl, rg) -> (tvl, bind_rg_var env rg);;
 
@@ -62,7 +70,7 @@ let rec make_new_env env = function
         let env' = {
           dcenv = env.dcenv; 
           tvenv = env.tvenv;
-          vvenv = SM.add x (bind_sch_var env s) (env.vvenv);
+          vvenv = SM.add x ((*bind_sch_var env*) s) (env.vvenv);
           ivenv = env.ivenv;
         } in 
           make_new_env env' tl
@@ -70,7 +78,7 @@ let rec make_new_env env = function
         let rule = {
           priority = p;
           name = x;
-          sch = bind_sch_var env s
+          sch = (*bind_sch_var env*) s
         } in
         let env' = {
           dcenv = env.dcenv; 
@@ -90,9 +98,13 @@ let rec substitution f g (x : type_variable) = match f, g with
     | _ -> raise (Erreur "variable absente de la substitution");;
   
 
-(* Fonction de test d'égalité de types*)
+(* Fonction de test d'égalité de types 
+ * deux schémas de types sont égaux s'il le sont par alpha-renommage et
+ * permutations des abstractions de type
+ *)
 
-  let rec equalsT t1 t2 = match t1, t2 with
+(* Deprecated *)
+let rec equalsT t1 t2 = match t1, t2 with
     | TFvar(x), TFvar(y) -> x=y
     | TFvar(x), TGvar(y) -> x=y
     | TGvar(x), TFvar(y) -> x=y
@@ -100,18 +112,25 @@ let rec substitution f g (x : type_variable) = match f, g with
     | TArrow(a, b), TArrow(a',b') -> (equalsT a a') && (equalsT b b')
     | TConApp(tc, tl), TConApp(tc', tl') -> (tc = tc') && (equalsTL tl tl')
     |_ -> false
-
-  and equalsTL l1 l2 = match l1, l2 with
+(* Deprecated *)
+and equalsTL l1 l2 = match l1, l2 with
     | [], [] -> true
     | h1::t1, h2::t2 -> (equalsT h1 h2) && (equalsTL t1 t2)
     | _ -> false;;
 
+let equalsT t1 t2 = size t1 = size t2 && Unification.unify t1 t2;;
+
+let rec equalsTL l1 l2 = match l1, l2 with
+    | [], [] -> true
+    | h1::t1, h2::t2 -> (equalsT h1 h2) && (equalsTL t1 t2)
+    | _ -> false;;
 
 let equalsR r1 r2 = match r1, r2 with
   | (tl1, t1), (tl2, t2) -> (equalsT t1 t2) && (equalsTL tl1 tl2);;
 
 let equalsS s1 s2 = match s1, s2 with
-  | (tvl1, r1), (tvl2, r2) -> (tvl1 = tvl2) && (equalsR r1 r2);;
+  | (tvl1, r1), (tvl2, r2) -> (List.length tvl1 = List.length tvl2) 
+    && (equalsR r1 r2);;
 
 (* fonction de résolution des arguments implicites *)
 
@@ -147,16 +166,19 @@ let rec elaborate_expr env (e : expression) : sch * expression =
 
   match e with
     | EVar(x)->
-        (
-          try 
-            resolve_imp env (StringMap.find x (env.vvenv)) e 
+        let tv, r = (
+          try
+            SM.find x env.vvenv
           with
-            | _ -> try resolve_imp env (Dn.get env.ivenv x) e with
-                | _ -> Error.error [Error.Expr(e)] "Autant pour moi..."
+            | _ -> try Dn.get env.ivenv x with
+                | _ -> Error.error [Error.Expr(e)] "Ce n'est pas ces variables que vous recherchez..."
         )
+        in
+        (*let (tv,r) = close_scheme tv r in*)
+          resolve_imp env (tv,r) e
     | EFun(x, t2, m1)-> 
         (*printf "TEST : %s\n" (to_string_details t2);*)
-        let t2 = bind_type_var env t2 in
+        (*let t2 = bind_type_var env t2 in*)
         let nenv = {
           dcenv = env.dcenv; 
           tvenv = env.tvenv;
@@ -170,7 +192,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
     | EApp(m1, m2) -> (
         match (elaborate_expr env m1), (elaborate_expr env m2) with
           | (([],([],TArrow(t2, t1))), n1), (([],([],t2')), n2) (*when t2=t2'*)->
-              (*if equalsT t2 t2' then*) 
+              (*if equalsT t2 t2' then*)
               if t2=t2' then
                 (* Le "=" nest pas trop restrictif car les termes sont 
                  * explicitement spécifiés *)
@@ -184,7 +206,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           |_, _ -> Error.error [Error.Expr(e)] "On attends ici des types simples"
       )
     | EConApp(c, lt, le) ->
-        let lt = bind_typelist_var env lt in
+        (*let lt = bind_typelist_var env lt in*)
         let Wf.Scheme(tvl, lte, tdef) = SM.find c (env.dcenv) in
         let g = substitution tvl lt in
         let f x = Error.error [Error.Expr(e)] "unexpected..." in
@@ -192,7 +214,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           | h1::t1, h2::t2 -> (
               match elaborate_expr env h1 with
                 (*| ([], ([], t)), n -> if equalsT t (Type.lift f g h2)*)
-                  | ([], ([], t)), n -> if t=(Type.lift f g h2)
+                | ([], ([], t)), n -> if t=(Type.lift f g h2)
 
                   (* De même ici *)
 
@@ -224,10 +246,13 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         let rec elab accu = function
           | [] -> accu
           | (_, x, s1, m1)::tl ->
-              let s1 = bind_sch_var env s1 in
+              (*let s1 = bind_sch_var env s1 in*)
               let (s1', n1) = elaborate_expr nenv m1 in
-                (*if not (equalsS s1 s1') then begin*)
-                if s1<>s1' then begin
+                if not (equalsS s1 s1') then begin
+                (*if s1<>s1' then begin*)
+                  let (_, (_, t1)) = s1 in
+                  let (_, (_, t2)) = s1' in
+                  printf "TEST unifiable : %B\n" (Unification.unify t1 t2);
                   printf "le type utilisé est \t\t";
                   print_sch s1';
                   printf "\nalors que le type spécifié est \t";
@@ -262,8 +287,8 @@ let rec elaborate_expr env (e : expression) : sch * expression =
               (* vérification de la cohérence des spécifications *)
 
               let Branch(PConApp(dc, tauibarre, xibarre), mi) = hd in
-              let tauibarre = bind_typelist_var env tauibarre in
-                (*if not (equalsTL tauibarre taubarre) then *)
+              (*let tauibarre = bind_typelist_var env tauibarre in*)
+                (*if not (equalsTL tauibarre taubarre) then*)
                 if tauibarre<>taubarre then
                   Error.error [Error.Expr(e)] "spécifications incompatibles"
 
@@ -291,8 +316,8 @@ let rec elaborate_expr env (e : expression) : sch * expression =
                       let (si, ni) = elaborate_expr nenv mi in
                         if tail = [] then si, [Branch(PConApp(dc, taubarre, xibarre), ni)] 
                         else let (s, lp')  = test_spec tail in
-                          (*if not (equalsS s si) then*)
-                          if s<>si then
+                          if not (equalsS s si) then
+                          (*if s<>si then*)
                             Error.error [Error.Expr(e)] "types de branches incompatibles"
                           else 
                               s, Branch(PConApp(dc, taubarre, xibarre), ni)::lp'
@@ -301,11 +326,11 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         let (s, lp') = test_spec lp in
           (s, EMatch(n, lp'))
     | EImplicit(t) ->
-        let t = bind_type_var env t in
+        (*let t = bind_type_var env t in*)
         let n = exproftype env.ivenv t in
           ([], ([], t)), n
     | EFunI(p, x, t, m) -> 
-        let t = bind_type_var env t in
+        (*let t = bind_type_var env t in*)
         let nenv = make_new_env env [Some p, x, ([], ([], t)), None] in
         let (s, n) = elaborate_expr nenv m in (
           match s with
@@ -326,7 +351,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         let nenv = make_new_env_from_TV a in
         let (s, n) = elaborate_expr nenv m in 
         let a', r = s in
-          ((a@a', r), ELam(a,n))
+          (close_scheme (a@a') r, ELam(a,n))
 
     (*(
      match s with
@@ -334,10 +359,10 @@ let rec elaborate_expr env (e : expression) : sch * expression =
      |_ -> Error.error [Error.Expr(e)] "Polymorphisme non permis ici"
      )*)    
     | ETapp(m,lt) ->
-        let lt = bind_typelist_var env lt in
+        (*let lt = bind_typelist_var env lt in*)
         let (la, r), n = elaborate_expr env m in
-        (*print_sch (la, r); printf "\n";*)
-        (*List.iter (fun x -> printf "%s " (to_string x)) lt; printf "\n";*)
+        (*(* DEBUG *) print_sch (la, r); printf "\n";*)
+        (*(* DEBUG *) List.iter (fun x -> printf "%s " (to_string x)) lt; printf "\n";*)
         let g = substitution la lt in
         let lift_row = List.map (Type.lift (fun x -> TFvar(x)) g) in
         let (timp, t) = r in

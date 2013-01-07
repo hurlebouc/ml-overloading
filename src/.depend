@@ -24,10 +24,10 @@ exproftype.cmo : settings.cmi printast.cmi matching.cmi ast.cmi \
     exproftype.cmi
 exproftype.cmx : settings.cmx printast.cmx matching.cmx ast.cmi \
     exproftype.cmi
-elaborate.cmo : wf.cmi type.cmi stringMap.cmi printast.cmi matching.cmi \
-    exproftype.cmi error.cmi ast.cmi elaborate.cmi
-elaborate.cmx : wf.cmx type.cmx stringMap.cmx printast.cmx matching.cmx \
-    exproftype.cmx error.cmx ast.cmi elaborate.cmi
+elaborate.cmo : wf.cmi type.cmi stringMap.cmi matching.cmi exproftype.cmi \
+    error.cmi ast.cmi elaborate.cmi
+elaborate.cmx : wf.cmx type.cmx stringMap.cmx matching.cmx exproftype.cmx \
+    error.cmx ast.cmi elaborate.cmi
 front.cmo : wf.cmi settings.cmi printast.cmi parser.cmi lexer.cmo error.cmi \
     elaborate.cmi ast.cmi front.cmi
 front.cmx : wf.cmx settings.cmx printast.cmx parser.cmx lexer.cmx error.cmx \
