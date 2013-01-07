@@ -20,7 +20,7 @@ type nat =
 
 ;;
 
-let rec fold : 'b. 'b -> 'b = 
+let rec fold : 'x. 'x -> 'x = 
   Lam 'b.
 
   fun (accu : 'b) ->
