@@ -66,11 +66,21 @@ module Dn : DN = struct
           normal = m.normal;
           high = m.high;
         }
-      | Normal -> {
-          low = m.low;
-          normal = rule::m.normal;
-          high = m.high;
-        }
+      | Normal -> 
+          let (_, (_, t)) = rule.sch in
+          let p r = 
+            let (_, (_, t')) = r.sch in
+              (r.name <> rule.name) && (Unification.unify t' t)
+          in
+            if List.exists p (m.normal) 
+            then
+              failwith "On ne peut ajouter deux liens normaux qui s'unifient."
+            else
+              {
+                low = m.low;
+                normal = rule::m.normal;
+                high = m.high;
+              }
       | High -> {
           low = m.low;
           normal = m.normal;
@@ -130,5 +140,5 @@ let rec exproftype (ivenv : Dn.t) (t0 : typ) : expression =
   in
    match aux [] t0 (Dn.find ivenv t0) with
      | Some n -> n
-     | None -> failwith "L'élaboration de terme à échouée"
+     | None -> failwith ("L'élaboration du type [" ^ (to_string t0) ^ "] a échouée")
   (*failwith "truc"*)
