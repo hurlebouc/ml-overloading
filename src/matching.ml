@@ -98,7 +98,7 @@ let matching (s : sch) (t0 : typ) =
           | Some l -> matching_aux_list l tvs tail tail'
           | None -> None
       )
-    | _ -> failwith "On est pas sorti du sable..."
+    | _ -> failwith "On est pas sorti du sable..." (* impossible *)
   in
 
   let (tvs, (r, t)) = s in
@@ -116,12 +116,13 @@ let matching (s : sch) (t0 : typ) =
               (* Construit le domaine instancié par tvs *)
 
               let g x = 
-                let (x, t) = List.find (fun (y,z) -> y=x) lmatch in
-                  t in
-              let f x = failwith "Oups..." in
+                let (_, z) = List.find (fun (y,z) -> y=x) lmatch in
+                  z 
+              in
+              let f x = TFvar(x) in
               let rec builddom = function
                 | [] -> []
-                | h::t -> (Type.lift f g h)::(builddom t) in
+                | h::t -> (Type.lift f g h)::(builddom t) in (*ordre respecté*)
               let tsi = builddom r in
                 Some (lmatch, tsi)
           

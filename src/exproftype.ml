@@ -3,6 +3,7 @@ open Ast
 open Printast
 open Format
 open Matching
+open Type
 
 (* the type rules *)
 type rule = {
@@ -48,11 +49,12 @@ module Dn : DN = struct
   let empty = { low = []; normal = []; high = [] }
 
   (* cette fonction est inutiles (ses entrées-sorties) ne me permettent pas de
-   * faire grand chose d'intéressant
+   * faire grand chose d'intéressant : elle se contente de tout renvoyer dans le
+   * bon ordre.
    *)
 
   let find (m : t) (t0 : typ) : rule list =
-    failwith "I'm a poor lonesome function..."
+    (m.high) @ (m.normal) @ (List.rev m.low)
 
   (* Il faut améliorer la fonction d'ajout en la rendant plus restrictives sur
    * les ambiguités *)
@@ -85,8 +87,48 @@ module Dn : DN = struct
 
 end
 
-(* Cette fonction gère les appeles récursifs de la règle et vérifie que les
- * crit!ères de terminaisons sont respecté *)
 
-let exproftype (ivenv : Dn.t) (t : typ) : expression =
-  failwith "It's the hard law of the West!"
+let test_bf path ((x0 : value_variable), (t0 : typ)) : bool =
+  let p (x, t) = (t=t0) || (x=x0 && (size t0 > size t)) in
+    not (List.exists p path);;
+
+(* Cette fonction gère les appeles récursifs de la règle et vérifie que les
+ * critères de terminaisons sont respectés *)
+
+let rec exproftype (ivenv : Dn.t) (t0 : typ) : expression =
+
+  let reorder subst s = 
+    let (tv, _) = s in
+    let p x (x', y) = x'=x in
+    let find_couple x = List.find (p x) subst in
+    let find_type x = snd (find_couple x) in
+      List.map find_type tv
+  in
+
+  let rec aux (path : (value_variable * typ) list) t0 = function
+    | [] -> None
+    | rule::tail -> 
+        let x, s = rule.name, rule.sch in
+          match matching s t0 with
+            | Some(subst, new_row) when test_bf path (x, t0) -> 
+                let rec dispatch_types accu = function
+                  | [] -> Some (List.rev accu)
+                  | t'::later -> 
+                      match aux ((x, t0)::path) t' tail with
+                        | None -> None
+                        | Some n -> dispatch_types (n::accu) later
+                in (
+                  match dispatch_types [] new_row with
+                    | None -> aux path t0 tail
+                    | Some ln -> Some (ETapp(EVar(x), reorder subst s))
+                )
+
+            (*| None -> aux res struc t0 tail
+            | Some(subst, new_row) when not (test_bf struc (x, t0))-> 
+                aux res struc t0 tail*)
+            | _ -> aux path t0 tail
+  in
+   match aux [] t0 (Dn.find ivenv t0) with
+     | Some n -> n
+     | None -> failwith "L'élaboration de terme à échouée"
+  (*failwith "truc"*)

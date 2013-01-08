@@ -40,7 +40,9 @@ let rec map : 'a. 'b. ('a -> 'b) -> 'a list -> 'b list  =
     end
 in
 
-let obj = Simple [base2, base] (Y,B) in 
+let obj = Simple [base2, base] (Y,B) in
+
+let bidule = map [base] [base2] in
 
 
 begin match obj with

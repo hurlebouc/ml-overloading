@@ -96,7 +96,15 @@ exception Erreur of string
 let rec substitution f g (x : type_variable) = match f, g with
     | h1::t1, h2::t2 -> if h1=x then h2 else substitution t1 t2 x
     | _ -> raise (Erreur "variable absente de la substitution");;
-  
+
+let rec substitution_partial f g (x : type_variable) = match f, g with
+  | h1::t1, h2::t2 -> if h1=x then h2 else substitution_partial t1 t2 x
+  | _ -> TGvar(x);;
+
+let rec extract_unspec_var lv lt = match lv, lt with
+  | _, [] -> lv
+  | h1::t1, h2::t2 -> extract_unspec_var t1 t2
+  | _ -> raise (Erreur "Trop de spécifications");;
 
 (* Fonction de test d'égalité de types 
  * deux schémas de types sont égaux s'il le sont par alpha-renommage et
@@ -208,6 +216,8 @@ let rec elaborate_expr env (e : expression) : sch * expression =
     | EConApp(c, lt, le) ->
         (*let lt = bind_typelist_var env lt in*)
         let Wf.Scheme(tvl, lte, tdef) = SM.find c (env.dcenv) in
+        (* On sait |lt| = |tvl| car sinon le test de well foundness aurait
+         * planté *)
         let g = substitution tvl lt in
         let f x = Error.error [Error.Expr(e)] "Ce ne sont pas ces variables que vous recherchez..." in
         let rec comp_arg le lte = match le, lte with
@@ -301,6 +311,9 @@ let rec elaborate_expr env (e : expression) : sch * expression =
 
                       (* vérification de la cohérence du type des branches *)
 
+                      (* On sait ici que |alphabarre| = |taubarre| car sinon le
+                       * test de well-foundness aurait planté *)
+
                       else let g = substitution alphabarre taubarre in
                       let f x = Error.error [Error.Expr(e)] "unexpected..." in
                       let rec make_new_env_from_var = function
@@ -361,15 +374,22 @@ let rec elaborate_expr env (e : expression) : sch * expression =
     | ETapp(m,lt) ->
         (*let lt = bind_typelist_var env lt in*)
         let (la, r), n = elaborate_expr env m in
-        (*(* DEBUG *) print_sch (la, r); printf "\n";*)
-        (*(* DEBUG *) List.iter (fun x -> printf "%s " (to_string x)) lt; printf "\n";*)
-        let g = substitution la lt in
-        let lift_row = List.map (Type.lift (fun x -> TFvar(x)) g) in
-        let (timp, t) = r in
-        let s' = ([], ((lift_row timp), Type.lift (fun x -> TFvar(x)) g t)) in
-        let n' = ETapp(n, lt) in
-          resolve_imp env s' n'
-          (*([], ((lift_row timp), Type.lift (fun x -> TFvar(x)) g t)), ETapp(n, lt)*)
+          if List.length lt > List.length la 
+          then
+            let str = (string_of_int (List.length lt)) ^ " types sont donnés "^
+                      "alors que "^(string_of_int (List.length la))^" sont attendus." in
+              Error.error [Error.Expr(e)] str
+              else
+                (*(* DEBUG *) print_sch (la, r); printf "\n";*)
+                (*(* DEBUG *) List.iter (fun x -> printf "%s " (to_string x)) lt; printf "\n";*) 
+                let g = substitution_partial la lt in
+                let lift_row = List.map (Type.lift (fun x -> TFvar(x)) g) in
+                let (timp, t) = r in
+                let sublist = extract_unspec_var la lt in
+                let s' = (sublist, ((lift_row timp), Type.lift (fun x -> TFvar(x)) g t)) in
+                let n' = ETapp(n, lt) in
+                  resolve_imp env s' n'
+(*([], ((lift_row timp), Type.lift (fun x -> TFvar(x)) g t)), ETapp(n, lt)*)
 
 (* ------------------------------------------------------------------------- *)
 

@@ -12,3 +12,7 @@ test/others/pair.ml
 imp_declaration.ml
 record.ml
 trans.ml
+test/good/cast.ml
+test/good/nat.ml
+test/good/priorities.ml
+test/good/priorities.out

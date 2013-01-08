@@ -28,4 +28,8 @@ val close_scheme : type_variable list -> row -> sch
  instance, and the domain [ts] of [sch] instantiated by [su].  [su] is
  returned as an association list, not as a substitution *)
 
+(* L'ordre de la correspondance type-variables - types ne respecte pas l'ordre
+ * de liaison des variables dans le schéma de type 
+ *)
+
 val matching : sch -> typ -> ((type_variable * typ) list * typ list) option
