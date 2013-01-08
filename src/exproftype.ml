@@ -107,6 +107,8 @@ let test_bf path ((x0 : value_variable), (t0 : typ)) : bool =
 
 let rec exproftype (ivenv : Dn.t) (t0 : typ) : expression =
 
+  (*printf "elaboration de %s\n" (to_string t0);*)
+
   let reorder subst s = 
     let (tv, _) = s in
     let p x (x', y) = x'=x in
@@ -132,10 +134,6 @@ let rec exproftype (ivenv : Dn.t) (t0 : typ) : expression =
                     | None -> aux path t0 tail
                     | Some ln -> Some (ETapp(EVar(x), reorder subst s))
                 )
-
-            (*| None -> aux res struc t0 tail
-            | Some(subst, new_row) when not (test_bf struc (x, t0))-> 
-                aux res struc t0 tail*)
             | _ -> aux path t0 tail
   in
    match aux [] t0 (Dn.find ivenv t0) with

@@ -1,0 +1,17 @@
+(* -*- tuareg -*- *)
+
+type u = A
+type 'a t = T of 'a
+;;
+
+let ?aat = T [u t] (T [u] A) in 
+let ?<at2a = Lam 'a. fun (?x : 'a t) => begin match x with T ['a] y -> y end in 
+
+let ?y = (? : u t) in 
+let x = (? : u) in
+
+(* succeeds as (at2a y) where y is (at2a aat) while (at2a (at2a aat) would
+   fail *)
+
+A
+
