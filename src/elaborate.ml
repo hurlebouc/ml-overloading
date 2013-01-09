@@ -142,7 +142,11 @@ let equalsS s1 s2 = match s1, s2 with
 
 (* fonction de résolution des arguments implicites *)
 
-let rec resolve_imp env (s : sch) (n : expression) = match s with
+let rec resolve_imp env (s : sch) (n : expression) = 
+  (*printf "%s : %s\n" (Printast.expr_to_string n) (Printast.sch_to_string
+  * s);*)
+  
+  match s with
   | [], (tau::rho, t) -> 
       let n0 = exproftype env.ivenv tau in
       let s' = ([], (rho, t)) in

@@ -37,6 +37,15 @@ end
  However, a naive implementation may just return all rules. *)
 
 
+let string_of_rule r =
+  let prio = match r.priority with
+    | Low -> "low"
+    | Normal -> "normal"
+    | High -> "high"
+  in r. name ^ " : " ^ prio ^ ", [" ^ (Printast.sch_to_string r.sch) ^ "]";;
+
+let print_rule_list = List.iter (fun x -> printf "%s\n" (string_of_rule x));;
+
 module Dn : DN = struct
   type t = {
     low : rule list;
@@ -66,7 +75,8 @@ module Dn : DN = struct
           normal = m.normal;
           high = m.high;
         }
-      | Normal -> 
+      | Normal ->
+          (*Printf.printf "%s\n" (string_of_rule rule);*)
           let (_, (_, t)) = rule.sch in
           let p r = 
             let (_, (_, t')) = r.sch in
@@ -97,20 +107,12 @@ module Dn : DN = struct
 
 end
 
-let string_of_rule r =
-  let prio = match r.priority with
-    | Low -> "low"
-    | Normal -> "normal"
-    | High -> "high"
-  in r. name ^ " : " ^ prio ^ ", [" ^ (Printast.sch_to_string r.sch) ^ "]";;
 
-let print_rule_list = List.iter (fun x -> printf "%s\n" (string_of_rule x));;
-
-
-
+(* renvoie true lorsque l'ajout de la variable et du type est légal *)
 let test_bf path ((x0 : value_variable), (t0 : typ)) : bool =
   let p (x, t) = (t=t0) || (x=x0 && (size t0 > size t)) in
     not (List.exists p path);;
+  (*true;;*)
 
 (* Cette fonction gère les appeles récursifs de la règle et vérifie que les
  * critères de terminaisons sont respectés *)
@@ -118,6 +120,7 @@ let test_bf path ((x0 : value_variable), (t0 : typ)) : bool =
 let exproftype (ivenv : Dn.t) (t0 : typ) : expression =
 
   let listchoice = (Dn.find ivenv t0) in
+  
   (*printf "elaboration de %s\n" (to_string t0);
   print_rule_list listchoice;*)
 
