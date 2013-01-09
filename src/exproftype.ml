@@ -97,6 +97,16 @@ module Dn : DN = struct
 
 end
 
+let string_of_rule r =
+  let prio = match r.priority with
+    | Low -> "low"
+    | Normal -> "normal"
+    | High -> "high"
+  in r. name ^ " : " ^ prio ^ ", [" ^ (Printast.sch_to_string r.sch) ^ "]";;
+
+let print_rule_list = List.iter (fun x -> printf "%s\n" (string_of_rule x));;
+
+
 
 let test_bf path ((x0 : value_variable), (t0 : typ)) : bool =
   let p (x, t) = (t=t0) || (x=x0 && (size t0 > size t)) in
@@ -105,9 +115,11 @@ let test_bf path ((x0 : value_variable), (t0 : typ)) : bool =
 (* Cette fonction gère les appeles récursifs de la règle et vérifie que les
  * critères de terminaisons sont respectés *)
 
-let rec exproftype (ivenv : Dn.t) (t0 : typ) : expression =
+let exproftype (ivenv : Dn.t) (t0 : typ) : expression =
 
-  (*printf "elaboration de %s\n" (to_string t0);*)
+  let listchoice = (Dn.find ivenv t0) in
+  (*printf "elaboration de %s\n" (to_string t0);
+  print_rule_list listchoice;*)
 
   let reorder subst s = 
     let (tv, _) = s in
@@ -115,6 +127,11 @@ let rec exproftype (ivenv : Dn.t) (t0 : typ) : expression =
     let find_couple x = List.find (p x) subst in
     let find_type x = snd (find_couple x) in
       List.map find_type tv
+  in
+
+  let rec apply_mult head args = match args with
+    | [] -> head
+    | h::t -> apply_mult (EApp(head, h)) t 
   in
 
   let rec aux (path : (value_variable * typ) list) t0 = function
@@ -125,18 +142,19 @@ let rec exproftype (ivenv : Dn.t) (t0 : typ) : expression =
             | Some(subst, new_row) when test_bf path (x, t0) -> 
                 let rec dispatch_types accu = function
                   | [] -> Some (List.rev accu)
-                  | t'::later -> 
-                      match aux ((x, t0)::path) t' tail with
+                  | t'::others -> 
+                      (*match aux ((x, t0)::path) t' tail with*)
+                      match aux ((x, t0)::path) t' listchoice with
                         | None -> None
-                        | Some n -> dispatch_types (n::accu) later
+                        | Some n -> dispatch_types (n::accu) others
                 in (
                   match dispatch_types [] new_row with
                     | None -> aux path t0 tail
-                    | Some ln -> Some (ETapp(EVar(x), reorder subst s))
+                    | Some ln -> Some ( apply_mult (ETapp(EVar(x), reorder subst s)) ln)
                 )
             | _ -> aux path t0 tail
   in
-   match aux [] t0 (Dn.find ivenv t0) with
+   match aux [] t0 listchoice with
      | Some n -> n
      | None -> failwith ("L'élaboration du type [" ^ (to_string t0) ^ "] a échouée")
   (*failwith "truc"*)

@@ -16,3 +16,7 @@ test/good/cast.ml
 test/good/nat.ml
 test/good/priorities.ml
 test/good/priorities.out
+test/good/loop_tt.ml
+test/good/typeclass.ml
+test/good/typeclass.out
+test/others/loop_tt.ml
