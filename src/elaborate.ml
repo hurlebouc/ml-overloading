@@ -3,6 +3,7 @@ open Type
 open Matching
 open Exproftype
 open Printf
+open Printast
 
 module SM = StringMap
 
@@ -202,7 +203,8 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         )
         in
         (*let (tv,r) = close_scheme tv r in*)
-          resolve_imp env (tv,r) e
+          (try resolve_imp env (tv,r) e with
+            | Dn.ElabFail message -> Error.error [Error.Expr(e)] message)
     | EFun(x, t2, m1)-> 
         (*printf "TEST : %s\n" (to_string_details t2);*)
         (*let t2 = bind_type_var env t2 in*)
@@ -230,7 +232,14 @@ let rec elaborate_expr env (e : expression) : sch * expression =
                 printf "mais %s est attendu\n"  (to_string t2);
                 Error.error [Error.Expr(e)] "Types incompatibles"
               end
-          |_, _ -> Error.error [Error.Expr(e)] "On attends ici des types simples"
+          |(([],([],TArrow(_, _))), _), (s2,_) -> 
+              printf "L'expression %s\nest de type [%s]\n"
+                (expr_to_string m2) (sch_to_string s2);
+              Error.error [Error.Expr(e)] "Le type de l'argument doit être simple"
+          | (s1, _), _ -> 
+              printf "L'expression %s\nest de type [%s]\n"
+                (expr_to_string m1) (sch_to_string s1);
+              Error.error [Error.Expr(e)] "Le type de la fonction n'est pas une flèche"
       )
     | EConApp(c, lt, le) ->
         (*let lt = bind_typelist_var env lt in*)
@@ -271,7 +280,14 @@ let rec elaborate_expr env (e : expression) : sch * expression =
             Error.error [Error.Expr(e)] 
               ("Le type ["^ (Printast.sch_to_string s1) ^ "] ne peut être implicite")
           else 
-            let nenv = make_new_env env [(p, x, s1, None)] in
+            let nenv = try make_new_env env [(p, x, s1, None)] with
+              | Dn.AddFail (x',s') -> 
+                  printf "La variable %s est de type [%s]\n" 
+                    x (sch_to_string s1);
+                  printf "et la variable %s de type [%s] est déja présente\n"
+                    x' (sch_to_string s');
+                  Error.error [Error.Expr(e)] ("Chevauchement de définitions implicites")
+            in
             let (s2, n2) = elaborate_expr nenv m2 in 
               (s2, ELet(None, x, n1, n2))
     | ELetRec(l, m2) ->
@@ -370,7 +386,9 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           (s, EMatch(n, lp'))
     | EImplicit(t) ->
         (*let t = bind_type_var env t in*)
-        let n = exproftype env.ivenv t in
+        let n = try exproftype env.ivenv t with
+          | Dn.ElabFail message -> Error.error [Error.Expr(e)] message
+        in
           ([], ([], t)), n
     | EFunI(p, x, t, m) -> 
         (*let t = bind_type_var env t in*)

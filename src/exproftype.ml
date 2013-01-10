@@ -19,6 +19,8 @@ let print_rule pp r =
 module type DN = sig
   type t
   exception NotFound
+  exception ElabFail of string
+  exception AddFail of value_variable * sch
   val empty : t
   val find : t -> typ -> rule list
   val add : t -> rule -> t
@@ -54,6 +56,8 @@ module Dn : DN = struct
   }
 
   exception NotFound
+  exception ElabFail of string
+  exception AddFail of value_variable * sch
 
   let empty = { low = []; normal = []; high = [] }
 
@@ -82,15 +86,17 @@ module Dn : DN = struct
             let (_, (_, t')) = r.sch in
               (r.name <> rule.name) && (Unification.unify t' t)
           in
-            if List.exists p (m.normal) 
-            then
-              failwith "On ne peut ajouter deux liens normaux qui s'unifient."
-            else
-              {
-                low = m.low;
-                normal = rule::m.normal;
-                high = m.high;
-              }
+            (
+              try 
+                let rule = List.find p (m.normal) in
+                  raise (AddFail(rule.name, rule.sch))
+              with
+                | Not_found -> {
+                    low = m.low;
+                    normal = rule::m.normal;
+                    high = m.high;
+                  }
+            )
       | High -> {
           low = m.low;
           normal = m.normal;
@@ -159,5 +165,6 @@ let exproftype (ivenv : Dn.t) (t0 : typ) : expression =
   in
    match aux [] t0 listchoice with
      | Some n -> n
-     | None -> failwith ("L'élaboration du type [" ^ (to_string t0) ^ "] a échouée")
-  (*failwith "truc"*)
+     | None -> raise 
+                 (Dn.ElabFail 
+                    ("L'élaboration du type [" ^ (to_string t0) ^ "] a échouée"))

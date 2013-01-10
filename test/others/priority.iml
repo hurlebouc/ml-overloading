@@ -1,0 +1,5 @@
+type a = A ;;
+
+let ?>x = A in
+let ?y = A in
+(? : a)

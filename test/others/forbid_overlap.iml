@@ -1,0 +1,14 @@
+type a = A
+type ('a, 'b) t = Cons ;;
+
+let ?imp1 = Lam 'a. fun (x : 'a) -> x in
+let ?imp2 = Lam 'b. Lam 'c. fun (x : ('b, 'c) t) -> x in
+(? : a)
+
+(*Doit échouer
+   * In expression:
+   *   let ?imp2 = Lam 'b. Lam 'c. fun (x : ('b, 'c) t) ->  x in (? : a)
+   *   Chevauchement de définitions implicites
+   *   La variable imp2 est de type ['b. 'c. ('b, 'c) t -> ('b, 'c) t]
+   *   et la variable imp1 de type ['a. 'a -> 'a] est déja présente
+ *)
