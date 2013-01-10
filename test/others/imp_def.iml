@@ -1,0 +1,19 @@
+type unit = Unit
+type a = A
+type b = B
+type c = C
+type d = D
+;;
+
+let ?ab = fun (x : a) -> B in
+let ?bc = fun (x : b) -> C in
+let ?ad = fun (x : a) -> D in
+let ?dc = fun (x : d) -> C in
+
+let ?<comp =
+   Lam 'a. Lam 'b. Lam 'c. fun (?c1 : 'a -> 'b) => fun (?c2 : 'b -> 'c) =>
+      fun (x : 'a) -> c2 (c1 x) in
+
+let ?ac = (? : a -> c) in
+
+Unit

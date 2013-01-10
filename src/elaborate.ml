@@ -37,8 +37,12 @@ type env = {
  *    - sch_as_XXX au lieu de mes match
  *    - close_scheme au lieu de bind_XXX_var
  *    _ Printast.print_XXX au lieu de print_XXX
+ *
  * TODO vérifier que close_scheme ne doit pas être appliqué dans d'autres cas
  * que l'abstraction de type
+ *
+ * TODO vérifier que le test sur la restriction des définitions des types
+ * implicites ne doit ne s'appliquer que dans les let
  *)
 
 (* Deprecated *)
@@ -105,6 +109,17 @@ let rec extract_unspec_var lv lt = match lv, lt with
   | _, [] -> lv
   | h1::t1, h2::t2 -> extract_unspec_var t1 t2
   | _ -> raise (Erreur "Trop de spécifications");;
+
+(* renvoie true si s est un "bon" schema de type (respecte la restriction) *)
+let test_restriction (s : sch) =
+  let (tvs , (_, t)) = s in
+  let rec is_in (x : type_variable) = function
+    | TGvar(x') -> x=x'
+    | TArrow(t1, t2) -> (is_in x t1) || (is_in x t2)
+    | TConApp(_, tl) -> List.exists (is_in x) tl
+    | _ -> false
+  in
+    List.for_all (fun x -> is_in x t) tvs
 
 (* Fonction de test d'égalité de types 
  * deux schémas de types sont égaux s'il le sont par alpha-renommage et
@@ -251,35 +266,46 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           ([], ([], TConApp(tc, lt))), EConApp(c, lt, le')
     | ELet(p, x, m1, m2) -> 
         let (s1, n1) = elaborate_expr env m1 in
-        let nenv = make_new_env env [(p, x, s1, None)] in
-        (* Ici le test de liaison n'est a priori pas obligatoire *)
-        let (s2, n2) = elaborate_expr nenv m2 in 
-          (s2, ELet(None, x, n1, n2))
+          if not (test_restriction s1)
+          then
+            Error.error [Error.Expr(e)] 
+              ("Le type ["^ (Printast.sch_to_string s1) ^ "] ne peut être implicite")
+          else 
+            let nenv = make_new_env env [(p, x, s1, None)] in
+            let (s2, n2) = elaborate_expr nenv m2 in 
+              (s2, ELet(None, x, n1, n2))
     | ELetRec(l, m2) ->
         let nenv = make_new_env env l in
         let rec elab accu = function
           | [] -> accu
           | (_, x, s1, m1)::tl ->
-              (*let s1 = bind_sch_var env s1 in*)
-              let (s1', n1) = elaborate_expr nenv m1 in
-                if not (equalsS s1 s1') then begin
-                (*if s1<>s1' then begin*)
-                  let (_, (_, t1)) = s1 in
-                  let (_, (_, t2)) = s1' in
-                  printf "TEST unifiable : %B\n" (Unification.unify t1 t2);
-                  printf "le type utilisé est \t\t";
-                  print_sch s1';
-                  printf "\nalors que le type spécifié est \t";
-                  print_sch s1;
-                  printf "\n";
-                  Error.error [Error.Expr(m1)] "Types incompatibles" 
-                end
+              if not (test_restriction s1)
+              then 
+                Error.error [Error.Expr(e)] 
+                  ("Le type ["^ (Printast.sch_to_string s1) ^ "] ne peut être implicite")
+              else
+                (*let s1 = bind_sch_var env s1 in*)
+                let (s1', n1) = elaborate_expr nenv m1 in
+                  if not (equalsS s1 s1') then begin
+                    (*if s1<>s1' then begin*)
+                    let (_, (_, t1)) = s1 in
+                    let (_, (_, t2)) = s1' in
+                      printf "TEST unifiable : %B\n" (Unification.unify t1 t2);
+                      printf "le type utilisé est \t\t";
+                      (*print_sch s1';*)
+                      printf "%s" (Printast.sch_to_string s1');
+                      printf "\nalors que le type spécifié est \t";
+                      (*print_sch s1;*)
+                      printf "%s" (Printast.sch_to_string s1);
+                      printf "\n";
+                      Error.error [Error.Expr(m1)] "Types incompatibles" 
+                  end
 
-                (* De même ici *)
+                  (* De même ici *)
 
-                else
-                  let accu' = (None, x, s1, n1)::accu in
-                    elab accu' tl
+                  else
+                    let accu' = (None, x, s1, n1)::accu in
+                      elab accu' tl
         in
         let res = elab [] l in
         let (s2, n2) = elaborate_expr nenv m2 in 
