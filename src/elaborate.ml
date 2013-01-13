@@ -44,6 +44,12 @@ type env = {
  *
  * TODO vérifier que le test sur la restriction des définitions des types
  * implicites ne doit ne s'appliquer que dans les let
+ *
+ * TODO : améliorer le test d'égalité (avec alpha-renommage) en utilsant des
+ * variables fraiche dans les deux types
+ *
+ * TODO : utiliser l'environnement explicite pour stocker les variables
+ * implicites
  *)
 
 (* Deprecated *)
