@@ -61,7 +61,6 @@ let close_scheme tvs row : sch =
     tvs, map_row (substitute_fvars theta) row
 
 
-(*let close_scheme = failwith "Closure non implemented"*)
 
 (* [matching sch typ] checks whether the codomain of [sch] is more general than 
  [typ], This is gven [sch] of the form [tvs, (ts, t)], it checks whether
@@ -82,7 +81,7 @@ let matching (s : sch) (t0 : typ) =
 
   let rec matching_aux lmatch tvs t t0 = match t, t0 with
     | TFvar(x), TFvar(x') when x=x' -> Some lmatch
-    | TGvar(x), t when List.mem x tvs -> checkadd x t lmatch
+    | TGvar(x), _ when List.mem x tvs -> checkadd x t0 lmatch
     | TArrow(t1,t2), TArrow(t1', t2') -> (
         match matching_aux lmatch tvs t1 t1' with
           | Some l -> matching_aux l tvs t2 t2'

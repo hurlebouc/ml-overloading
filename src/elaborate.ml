@@ -31,9 +31,6 @@ type env = {
 
 (* Fonction donnant la bonne formation d'un type (avec les liaisons) 
  *
- * TODO améliorer l'efficacité de la création de nouveau environnement : le test
- * de liaison des variables de types n'est pas obligatoire à chaque fois. DONE
- *
  * TODO utiliser les fonctions du prof plutôt que les miennes :
  *    - sch_as_XXX au lieu de mes match
  *    - close_scheme au lieu de bind_XXX_var
@@ -148,19 +145,35 @@ and equalsTL l1 l2 = match l1, l2 with
     | h1::t1, h2::t2 -> (equalsT h1 h2) && (equalsTL t1 t2)
     | _ -> false;;
 
-let equalsT t1 t2 = size t1 = size t2 && Unification.unify t1 t2;;
+(* les deux fonctions précédentes sont issues d'une vielle version et sont
+ * totalement fausses *)
 
+(* Deprecated *)
+let equalsT t1 t2 = size t1 = size t2 && Unification.unify t1 t2;;
+(* Deprecated *)
 let rec equalsTL l1 l2 = match l1, l2 with
     | [], [] -> true
     | h1::t1, h2::t2 -> (equalsT h1 h2) && (equalsTL t1 t2)
     | _ -> false;;
-
+(* Deprecated *)
 let equalsR r1 r2 = match r1, r2 with
   | (tl1, t1), (tl2, t2) -> (equalsT t1 t2) && (equalsTL tl1 tl2);;
-
+(* Deprecated *)
 let equalsS s1 s2 = match s1, s2 with
   | (tvl1, r1), (tvl2, r2) -> (List.length tvl1 = List.length tvl2) 
     && (equalsR r1 r2);;
+
+(* Les versions précédendes sont peut-être juste mais dans le doute, on préfère
+ * la suivante *)
+
+let equalsS s1 s2 = match s1, s2 with
+  | (tvl1, (tl1, t1)), (tvl2, (tl2, t2)) -> (List.length tvl1 = List.length tvl2) 
+    && let subs = List.combine tvl1 tvl2 in
+    let g x = TGvar (snd (List.find (fun (x',y') -> x'=x) subs)) in
+    let f x = TFvar(x) in
+    let (tl1', t1') = (List.map (Type.lift f g) tl1), (Type.lift f g t1) in
+      t2=t1' && tl1'=tl2;;
+
 
 (* fonction de résolution des arguments implicites *)
 
@@ -310,9 +323,9 @@ let rec elaborate_expr env (e : expression) : sch * expression =
                 let (s1', n1) = elaborate_expr nenv m1 in
                   if not (equalsS s1 s1') then begin
                     (*if s1<>s1' then begin*)
-                    let (_, (_, t1)) = s1 in
+                    (*let (_, (_, t1)) = s1 in
                     let (_, (_, t2)) = s1' in
-                      printf "TEST unifiable : %B\n" (Unification.unify t1 t2);
+                      printf "TEST unifiable : %B\n" (Unification.unify t1 t2);*)
                       printf "le type utilisé est \t\t";
                       (*print_sch s1';*)
                       printf "%s" (Printast.sch_to_string s1');
