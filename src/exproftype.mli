@@ -11,7 +11,7 @@ module Dn : sig
   val empty : t
   val find : t -> typ -> rule list
   val add : t -> rule -> t
-  val get : t -> value_variable -> sch
+  (*val get : t -> value_variable -> sch*)
 end
 
 val exproftype : Dn.t -> typ -> Ast.expression 

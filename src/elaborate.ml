@@ -41,12 +41,6 @@ type env = {
  *
  * TODO vérifier que le test sur la restriction des définitions des types
  * implicites ne doit ne s'appliquer que dans les let
- *
- * TODO : améliorer le test d'égalité (avec alpha-renommage) en utilsant des
- * variables fraiche dans les deux types
- *
- * TODO : utiliser l'environnement explicite pour stocker les variables
- * implicites
  *)
 
 (* Deprecated *)
@@ -82,7 +76,7 @@ let rec make_new_env env = function
           ivenv = env.ivenv;
         } in 
           make_new_env env' tl
-    | (Some p, x, s, _)::tl ->
+    | (Some p, x, s, stub)::tl ->
         let rule = {
           priority = p;
           name = x;
@@ -93,8 +87,9 @@ let rec make_new_env env = function
           tvenv = env.tvenv;
           vvenv = env.vvenv;
           ivenv = Dn.add (env.ivenv) rule;
-        } in 
-          make_new_env env' tl;;      
+        } in
+          (* On ajoute la varibales aux deux environnements *)
+          make_new_env env' ((None, x, s, stub)::tl);;
   
 
 (* fonction de substitution de types *)
@@ -163,7 +158,7 @@ let equalsS s1 s2 = match s1, s2 with
   | (tvl1, r1), (tvl2, r2) -> (List.length tvl1 = List.length tvl2) 
     && (equalsR r1 r2);;
 
-(* Les versions précédendes sont peut-être juste mais dans le doute, on préfère
+(* Les versions précédendes sont peut-être justes mais dans le doute, on préfère
  * la suivante *)
 
 let equalsS s1 s2 = match s1, s2 with
@@ -217,8 +212,12 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           try
             SM.find x env.vvenv
           with
-            | _ -> try Dn.get env.ivenv x with
-                | _ -> Error.error [Error.Expr(e)] "unexpected..."
+            (*| _ -> try Dn.get env.ivenv x with*)
+            
+            (* Les variables implicites sont aussi dans l'environnement
+             * explicite*)
+            
+            | _ -> Error.error [Error.Expr(e)] "unexpected..."
         )
         in
         (*let (tv,r) = close_scheme tv r in*)

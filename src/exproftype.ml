@@ -24,7 +24,7 @@ module type DN = sig
   val empty : t
   val find : t -> typ -> rule list
   val add : t -> rule -> t
-  val get : t -> value_variable -> sch
+  (*val get : t -> value_variable -> sch*)
 end
 
 
@@ -103,13 +103,13 @@ module Dn : DN = struct
           high = rule::m.high;
         }
 
-  let get (m : t) (x : Ast.value_variable) : Ast.sch =
+  (*let get (m : t) (x : Ast.value_variable) : Ast.sch =
     let rec get_aux x = function
       | [] -> raise NotFound
       | h::t -> if h.name = x then h.sch else get_aux x t
     in try get_aux x m.low with
       | _ -> try get_aux x m.normal with
-          | _ -> get_aux x m.high
+          | _ -> get_aux x m.high*)
 
 end
 
