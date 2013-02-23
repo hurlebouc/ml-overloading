@@ -71,13 +71,13 @@ module Dn : DN = struct
 
   type dn = 
       (* ((rule * int) list option) * ((rule * int) list option) * (dn option)*)
-    | ConsDN of ((rule * int) list option) * ((rule * int) list option) * (dn option)
+    | ConsDN of ((type_variable * rule * int) list) * ((rule * int) list) * (dn option)
 
 
   type t = {
-    low     : dn (*rule list*);
-    normal  : dn (*rule list*);
-    high    : dn (*rule list*)
+    low     : dn * int(*rule list*);
+    normal  : dn * int (*rule list*);
+    high    : dn * int (*rule list*)
   }
 
   exception NotFound
@@ -85,9 +85,9 @@ module Dn : DN = struct
   exception AddFail of value_variable * sch
 
   let empty = {
-    low = ConsDN(None, None, None);
-    normal = ConsDN(None, None, None);
-    high = ConsDN(None, None, None)
+    low = ConsDN([], [], None), 0;
+    normal = ConsDN([], [], None), 0;
+    high = ConsDN([], [], None), 0
   }
 
   (* cette fonction est inutiles (ses entrées-sorties) ne me permettent pas de
@@ -96,7 +96,23 @@ module Dn : DN = struct
    *)
 
   let find (m : t) (t0 : typ) : rule list =
-    (m.high) @ (m.normal) @ (List.rev m.low)
+    
+    let filtre (dn : dn) (t0 : typ) : (rule*int) list = 
+      let rec aux dn t0 accu =
+        let ConsDN(lfvars, lgvars, arrow) = dn in
+        let accu = accu @ lgvars in
+        let accu = accu @ (List.rev_map (fun (tv, r, n) -> (r,n))
+                   (List.filter (fun (tv, r, n) -> t0 = TFvar tv) lfvars)) in
+          match t0 with
+            | TFvar(tv) -> ........................
+      in aux dn t0 []
+    in
+    let comp = fun (r, n) (r', n') -> n - n' in
+    let proj = fun (r, n) -> r in
+    let high = List.map proj (List.sort comp (filtre (proj m.high) t0)) in
+    let normal = List.map proj (List.sort comp (filtre (proj m.normal) t0)) in
+    let low = List.map proj (List.sort comp (filtre (proj m.low) t0)) in
+      high @ normal @ List.rev low
 
   (* Il faut améliorer la fonction d'ajout en la rendant plus restrictives sur
    * les ambiguités *)
