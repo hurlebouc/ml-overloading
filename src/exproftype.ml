@@ -51,30 +51,44 @@ let print_rule_list = List.iter (fun x -> printf "%s\n" (string_of_rule x));;
 module Dn : DN = struct
     
   
-  type dn = shape list
+  (*
+  type dn = 
+    | Adn of adn
+    | Fdn of type_variable * rule (* * int *)
+    | Gdn of type_variable * rule (* * int *)
+  and adn = shape list
   and shape =
-    | FFshape of type_variable * type_variable * rule (*  free - free  *)
-    | FGshape of type_variable * type_variable * rule (*  free - bound *)
-    | GFshape of type_variable * type_variable * rule (* bound - free  *)
-    | GGshape of type_variable * type_variable * rule (* bound - bound *)
-    | FAshape of type_variable * dn                   (*  free - arrow *)
-    | GAshape of type_variable * dn                   (* bound - arrow *)
-    | AFshape of dn * type_variable                   (* arrow - free  *)
-    | AGshape of dn * type_variable                   (* arrow - bound *)
-    | AAshape of dn * dn                              (* arrow - arrow *)
+    | FFshape of type_variable * type_variable * rule * int (*  free - free  *)
+    | FGshape of type_variable * type_variable * rule * int (*  free - bound *)
+    | GFshape of type_variable * type_variable * rule * int (* bound - free  *)
+    | GGshape of type_variable * type_variable * rule * int (* bound - bound *)
+    | FAshape of type_variable * adn                        (*  free - arrow *)
+    | GAshape of type_variable * adn                        (* bound - arrow *)
+    | AFshape of adn * type_variable                        (* arrow - free  *)
+    | AGshape of adn * type_variable                        (* arrow - bound *)
+    | AAshape of adn * adn                                  (* arrow - arrow *)
+   *)
+
+  type dn = 
+      (* ((rule * int) list option) * ((rule * int) list option) * (dn option)*)
+    | ConsDN of ((rule * int) list option) * ((rule * int) list option) * (dn option)
 
 
   type t = {
-    low : rule list;
-    normal : rule list;
-    high : rule list
+    low     : dn (*rule list*);
+    normal  : dn (*rule list*);
+    high    : dn (*rule list*)
   }
 
   exception NotFound
   exception ElabFail of string
   exception AddFail of value_variable * sch
 
-  let empty = { low = []; normal = []; high = [] }
+  let empty = {
+    low = ConsDN(None, None, None);
+    normal = ConsDN(None, None, None);
+    high = ConsDN(None, None, None)
+  }
 
   (* cette fonction est inutiles (ses entrées-sorties) ne me permettent pas de
    * faire grand chose d'intéressant : elle se contente de tout renvoyer dans le
