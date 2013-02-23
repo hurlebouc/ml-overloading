@@ -120,7 +120,7 @@ let test_bf path ((x0 : value_variable), (t0 : typ)) : bool =
     not (List.exists p path);;
   (*true;;*)
 
-(* Cette fonction gère les appeles récursifs de la règle et vérifie que les
+(* Cette fonction gère les appels récursifs de la règle et vérifie que les
  * critères de terminaisons sont respectés *)
 
 let exproftype (ivenv : Dn.t) (t0 : typ) : expression =
