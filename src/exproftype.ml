@@ -157,13 +157,36 @@ module Dn : DN = struct
 
   let add (m : t) (rule : rule) : t =
 
-    let rec aux (dn : dn) (rule : rule) (n : int) : dn = 
-      failwith "TODO"
+    let rec addInDN (p : rule -> bool) (dn : dn) (rule : rule) (n : int) : dn = 
+      let (_, (_, ty)) = rule.sch in
+      let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
+      let rec add_to_list liste rule n = match liste with
+        | [] -> 
+      in
+        match ty with
+          | TFvar(tv) -> 
+              let lfvars = add_to_list lfvars rule n in
+                ConsDN(lfvars, lgvars, arrow, lcons)
+          | TGvar(tv) -> (
+              try let (r, _) = List.find (fun (r,n) -> p r) rule lgvars in
+                raise AddFail(r.name, r.sch)
+              with
+                | NotFound -> 
+                    let lgvars = (rule, n) :: lgvars in
+                      ConsDN(lfvars, lgvars, arrow, lcons)
+            )
+          | TArrow(t1, t2) -> (
+              match arrow with
+                | None -> 
+                    let arrow = Some (
+                      addInDN p ConsDN([], [], None, []) t1
+                    , addInDN p ConsDN([], [], None, []) t2 ..............
+            )
     in
 
     match rule.priority with
       | Low -> {
-          low = (aux (fst m.low) rule (snd m.low), (snd m.low) + 1) (*rule::m.low*);
+          low = (addInDN (fst m.low) rule (snd m.low), (snd m.low) + 1) (*rule::m.low*);
           normal = m.normal;
           high = m.high;
         }
@@ -178,7 +201,7 @@ module Dn : DN = struct
               match find_exact p (fst m.normal) with
                 | [] -> {
                     low = m.low;
-                    normal = (aux (fst m.normal) rule (snd m.normal), (snd m.normal) + 1);
+                    normal = (addInDN (fst m.normal) rule (snd m.normal), (snd m.normal) + 1);
                     high = m.high;
                   }
                 | rule::_ -> raise (AddFail(rule.name, rule.sch))
@@ -186,7 +209,7 @@ module Dn : DN = struct
       | High -> {
           low = m.low;
           normal = m.normal;
-          high = (aux (fst m.high) rule (snd m.high), (snd m.high) + 1);
+          high = (addInDN (fst m.high) rule (snd m.high), (snd m.high) + 1);
         }
 
   (*let get (m : t) (x : Ast.value_variable) : Ast.sch =
