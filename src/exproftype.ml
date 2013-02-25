@@ -110,23 +110,23 @@ module Dn : DN = struct
       let rec aux dn t0 accu =
         let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
         let accu = accu @ lgvars in
-         match t0 with
-           | TFvar _ -> 
-               let _, liste = List.find (fun (tv, lrule) -> t0 = TFvar tv) lfvars in
-                 accu @ liste
-(*                 accu @ (List.rev_map (fun (tv, lrule) -> lrule)
-                                   (List.find (fun (tv, lrule) -> t0 = TFvar tv) lfvars)) *)
-           | TGvar _ -> assert false
-           | TArrow(t1,t2) -> (
-               match arrow with
-                 | None -> accu
-                 | Some (dn1, dn2) ->
-                     let accu = aux dn1 t1 accu in
-                       aux dn2 t2 accu
-             )
-           | TConApp(tc, ltype) -> 
-               let _, liste = List.find (fun (tc', ldn) -> tc' = tc) in
-                 accu @ List.fold aux ..............
+          match t0 with
+            | TFvar _ -> 
+                let _, liste = List.find (fun (tv, lrule) -> t0 = TFvar tv) lfvars in
+                  accu @ liste
+            (*                 accu @ (List.rev_map (fun (tv, lrule) -> lrule)
+             (List.find (fun (tv, lrule) -> t0 = TFvar tv) lfvars)) *)
+            | TGvar _ -> assert false
+            | TArrow(t1,t2) -> (
+                match arrow with
+                  | None -> accu
+                  | Some (dn1, dn2) ->
+                      let accu = aux dn1 t1 accu in
+                        aux dn2 t2 accu
+              )
+            | TConApp(tc, ltype) ->
+                let _, liste = List.find (fun (tc', ldn) -> tc' = tc) lcons in
+                  List.fold_left2 (fun accu dn t -> aux dn t accu) accu liste ltype
       in aux dn t0 []
     in
     let comp = fun (r, n) (r', n') -> n - n' in
@@ -139,35 +139,54 @@ module Dn : DN = struct
   (* Il faut améliorer la fonction d'ajout en la rendant plus restrictives sur
    * les ambiguités *)
 
+  let rec find_exact (p : rule -> bool) (dn : dn) : rule list = 
+    let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
+    let p' = fun (rule, n) -> p rule in
+    let res = List.filter p' lgvars in
+    let res = List.fold_left 
+                (fun accu (tv, lr) -> (List.filter p' lr) @ accu) res lfvars in
+    let res = List.map (fun (rule, n) -> rule) res in
+    let find_exact_list p = fun ldn -> 
+      List.fold_left (fun accu dn -> (find_exact p dn) @ accu) [] ldn in
+    let res = List.fold_left 
+                (fun accu (tc, ldn) -> (find_exact_list p ldn) @ accu) res lcons in
+      match arrow with
+        | None -> res
+        | Some(dn1, dn2) -> (find_exact_list p [dn1; dn2]) @ res
+
+
   let add (m : t) (rule : rule) : t =
+
+    let rec aux (dn : dn) (rule : rule) (n : int) : dn = 
+      failwith "TODO"
+    in
+
     match rule.priority with
       | Low -> {
-          low = rule::m.low;
+          low = (aux (fst m.low) rule (snd m.low), (snd m.low) + 1) (*rule::m.low*);
           normal = m.normal;
           high = m.high;
         }
       | Normal ->
           (*Printf.printf "%s\n" (string_of_rule rule);*)
           let (_, (_, t)) = rule.sch in
-          let p r = 
+          let p = fun r ->
             let (_, (_, t')) = r.sch in
               (r.name <> rule.name) && (Unification.unify t' t)
           in
             (
-              try 
-                let rule = List.find p (m.normal) in
-                  raise (AddFail(rule.name, rule.sch))
-              with
-                | Not_found -> {
+              match find_exact p (fst m.normal) with
+                | [] -> {
                     low = m.low;
-                    normal = rule::m.normal;
+                    normal = (aux (fst m.normal) rule (snd m.normal), (snd m.normal) + 1);
                     high = m.high;
                   }
+                | rule::_ -> raise (AddFail(rule.name, rule.sch))
             )
       | High -> {
           low = m.low;
           normal = m.normal;
-          high = rule::m.high;
+          high = (aux (fst m.high) rule (snd m.high), (snd m.high) + 1);
         }
 
   (*let get (m : t) (x : Ast.value_variable) : Ast.sch =
