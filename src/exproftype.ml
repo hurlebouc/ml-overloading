@@ -99,35 +99,50 @@ module Dn : DN = struct
     high = ConsDN([], [], None, []), 0
   }
 
-  (* cette fonction est inutiles (ses entrées-sorties) ne me permettent pas de
-   * faire grand chose d'intéressant : elle se contente de tout renvoyer dans le
-   * bon ordre.
-   *)
+  type 'a set = 
+    | Infty
+    | Set of 'a list
+
+  let rec intercection s1 s2 = match s1, s2 with
+    | Infty, _ -> s2
+    | _, Infty -> s1
+    | Set [], _ -> Set []
+    | Set (hd::tl), Set(l2) -> 
+        if (List.exists (fun x -> x = hd) l2) 
+        then match intercection (Set(tl)) (Set(l2)) with
+          | Set(l) -> Set (hd::l)
+          | _ -> assert false
+            else intercection (Set(tl)) (Set(l2))
 
   let find (m : t) (t0 : typ) : rule list =
-    
-    let filtre (dn : dn) (t0 : typ) : (rule*int) list = 
-      let rec aux dn t0 accu =
-        let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
-        let accu = accu @ lgvars in
-          match t0 with
-            | TFvar _ -> 
-                let _, liste = List.find (fun (tv, lrule) -> t0 = TFvar tv) lfvars in
-                  accu @ liste
-            (*                 accu @ (List.rev_map (fun (tv, lrule) -> lrule)
-             (List.find (fun (tv, lrule) -> t0 = TFvar tv) lfvars)) *)
-            | TGvar _ -> assert false
-            | TArrow(t1,t2) -> (
-                match arrow with
-                  | None -> accu
-                  | Some (dn1, dn2) ->
-                      let accu = aux dn1 t1 accu in
-                        aux dn2 t2 accu
-              )
-            | TConApp(tc, ltype) ->
-                let _, liste = List.find (fun (tc', ldn) -> tc' = tc) lcons in
-                  List.fold_left2 (fun accu dn t -> aux dn t accu) accu liste ltype
-      in aux dn t0 []
+
+    let rec filtre (dn : dn) (t0 : typ) : (rule*int) list = 
+      let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
+        match t0 with
+          | TFvar tv -> 
+              let _, liste = 
+                try List.find (fun (tv', lrule) -> tv = tv') lfvars
+                with
+                  |NotFound -> "", []
+              in lgvars @ liste
+          | TGvar _ -> assert false
+          | TArrow(t1,t2) -> (
+              match arrow with
+                | None -> lgvars
+                | Some (dn1, dn2) ->
+                    let l1 = filtre dn1 t1 in
+                    let l2 = filtre dn2 t2 in
+                    match intercection (Set(l1)) (Set(l2)) with
+                      | Set l -> l @ lgvars
+                      | _ -> assert false
+            )
+          | TConApp(tc, ltype) ->
+              let _, liste = List.find (fun (tc', ldn) -> tc' = tc) lcons in
+                match List.fold_left2 
+                        (fun accu dn t -> intercection (Set(filtre dn t)) accu) 
+                        Infty liste ltype with
+                  | Infty -> lgvars
+                  | Set l -> l @ lgvars
     in
     let comp = fun (r, n) (r', n') -> n - n' in
     let proj = fun (r, n) -> r in
@@ -136,9 +151,7 @@ module Dn : DN = struct
     let low = List.map proj (List.sort comp (filtre (proj m.low) t0)) in
       high @ normal @ List.rev low
 
-  (* Il faut améliorer la fonction d'ajout en la rendant plus restrictives sur
-   * les ambiguités *)
-
+  (* Deprecated *)
   let rec find_exact (p : rule -> bool) (dn : dn) : rule list = 
     let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
     let p' = fun (rule, n) -> p rule in
@@ -156,32 +169,46 @@ module Dn : DN = struct
 
 
   let add (m : t) (rule : rule) : t =
-
-    let rec addInDN (p : rule -> bool) (dn : dn) (rule : rule) (n : int) : dn = 
-      let (_, (_, ty)) = rule.sch in
-      let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
-      let rec add_to_list liste rule n = match liste with
-        | [] -> 
-      in
-        match ty with
-          | TFvar(tv) -> 
-              let lfvars = add_to_list lfvars rule n in
+    let addInDN (dn : dn) (rule : rule) (n : int) : dn = 
+      let rec aux (dn : dn) (t : typ) : dn = 
+        let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
+          match t with
+            | TFvar(tv) -> 
+                let rec add_to_list liste tv = match liste with
+                  | [] -> [(tv, [(rule, n)])]
+                  | (tv', lr)::tl -> if tv = tv' 
+                    then (tv', (rule, n)::lr)::tl
+                    else (tv', lr)::(add_to_list tl tv)
+                in
+                let lfvars = add_to_list lfvars tv in
+                  ConsDN(lfvars, lgvars, arrow, lcons)
+            | TGvar(tv) -> let lgvars = (rule, n) :: lgvars in
                 ConsDN(lfvars, lgvars, arrow, lcons)
-          | TGvar(tv) -> (
-              try let (r, _) = List.find (fun (r,n) -> p r) rule lgvars in
-                raise AddFail(r.name, r.sch)
-              with
-                | NotFound -> 
-                    let lgvars = (rule, n) :: lgvars in
-                      ConsDN(lfvars, lgvars, arrow, lcons)
-            )
-          | TArrow(t1, t2) -> (
-              match arrow with
-                | None -> 
-                    let arrow = Some (
-                      addInDN p ConsDN([], [], None, []) t1
-                    , addInDN p ConsDN([], [], None, []) t2 ..............
-            )
+            | TArrow(t1, t2) -> (
+                match arrow with
+                  | None -> 
+                      let arrow = Some (
+                        aux (ConsDN([], [], None, [])) t1
+                        , aux (ConsDN([], [], None, [])) t2) in
+                        ConsDN(lfvars, lgvars, arrow, lcons)
+                  | Some (dn1, dn2) -> 
+                      let arrow = Some(aux dn1 t1, aux dn2 t2) in
+                        ConsDN(lfvars, lgvars, arrow, lcons)
+              )
+            | TConApp(tc, ltype) ->
+                let rec add_to_list liste tc = match liste with
+                  | [] -> [(tc, List.map 
+                                  (fun ty -> aux (ConsDN([], [], None, [])) ty)
+                                  ltype)]
+                  | (tc', ldn)::tl -> if tc = tc' 
+                    then (tc', List.map2 (fun dn ty -> aux dn ty) ldn ltype)::tl
+                    else (tc', ldn)::(add_to_list tl tc)
+                in
+                let lcons = add_to_list lcons tc in
+                  ConsDN(lfvars, lgvars, arrow, lcons)
+      in
+      let (_, (_, ty)) = rule.sch in
+        aux dn ty
     in
 
     match rule.priority with
