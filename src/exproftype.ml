@@ -71,11 +71,20 @@ module Dn : DN = struct
 
   type dn = 
       (* ((rule * int) list option) * ((rule * int) list option) * (dn option)*)
-    | ConsDN of ((type_variable * rule * int) list) * ((rule * int) list) * (dn option)
+    | ConsDN of 
+        (* liste des listes des règles sous la même variables *)
+        ((type_variable * (rule * int) list) list)
+        (* liste des règles sous une variable liée (on ne fais pas 
+         * la différence entre les variables liée : c'est une sur-approximation)*)
+        * ((rule * int) list)
+        (* indique si une flèche est présente *)
+        * (dn*dn) option
+        (* liste des différents constructeurs présents à la racine *)
+        * (type_constructor * dn list ) list
 
 
   type t = {
-    low     : dn * int(*rule list*);
+    low     : dn * int (*rule list*);
     normal  : dn * int (*rule list*);
     high    : dn * int (*rule list*)
   }
@@ -85,9 +94,9 @@ module Dn : DN = struct
   exception AddFail of value_variable * sch
 
   let empty = {
-    low = ConsDN([], [], None), 0;
-    normal = ConsDN([], [], None), 0;
-    high = ConsDN([], [], None), 0
+    low = ConsDN([], [], None,  []), 0;
+    normal = ConsDN([], [], None, []), 0;
+    high = ConsDN([], [], None, []), 0
   }
 
   (* cette fonction est inutiles (ses entrées-sorties) ne me permettent pas de
@@ -99,12 +108,25 @@ module Dn : DN = struct
     
     let filtre (dn : dn) (t0 : typ) : (rule*int) list = 
       let rec aux dn t0 accu =
-        let ConsDN(lfvars, lgvars, arrow) = dn in
+        let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
         let accu = accu @ lgvars in
-        let accu = accu @ (List.rev_map (fun (tv, r, n) -> (r,n))
-                   (List.filter (fun (tv, r, n) -> t0 = TFvar tv) lfvars)) in
-          match t0 with
-            | TFvar(tv) -> ........................
+         match t0 with
+           | TFvar _ -> 
+               let _, liste = List.find (fun (tv, lrule) -> t0 = TFvar tv) lfvars in
+                 accu @ liste
+(*                 accu @ (List.rev_map (fun (tv, lrule) -> lrule)
+                                   (List.find (fun (tv, lrule) -> t0 = TFvar tv) lfvars)) *)
+           | TGvar _ -> assert false
+           | TArrow(t1,t2) -> (
+               match arrow with
+                 | None -> accu
+                 | Some (dn1, dn2) ->
+                     let accu = aux dn1 t1 accu in
+                       aux dn2 t2 accu
+             )
+           | TConApp(tc, ltype) -> 
+               let _, liste = List.find (fun (tc', ldn) -> tc' = tc) in
+                 accu @ List.fold aux ..............
       in aux dn t0 []
     in
     let comp = fun (r, n) (r', n') -> n - n' in
