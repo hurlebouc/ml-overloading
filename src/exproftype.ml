@@ -153,7 +153,10 @@ let exproftype (ivenv : Dn.t) (t0 : typ) : expression =
                   | [] -> Some (List.rev accu)
                   | t'::others -> 
                       (*match aux ((x, t0)::path) t' tail with*)
-                      match aux ((x, t0)::path) t' listchoice with
+                      match aux ((x, t0)::path) t' listchoice with 
+                        (* On devrait normalement remettre à jour listchoice
+                        * mais comme ici, tout la liste est renvoyée, ce n'est
+                        * pas la peine *)
                         | None -> None
                         | Some n -> dispatch_types (n::accu) others
                 in (
