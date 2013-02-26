@@ -35,15 +35,19 @@ syntaxe adoptée dans le projet :
 	\item Le premier élément du quadruplet permet de savoir quelles sont les
 		variables libres de type qui sont disponibles à cette position dans l'arbre.
 		à chaque variable libre est associée une liste de règles (avec en plus un 
-		entier qui permettra de connaître l'ordre d'arrivée des règles).
+		entier qui permettra de connaître l'ordre d'arrivée des règles). On nommera 
+		$\Sigma^{x}_{\dn}$ l'ensemble des règles associées à la variable libre de 
+		type $x$ dans $\dn$.
 	\item Le deuxième permet de savoir quelles sont les règles associées aux 
-		variables liées (génériques) à cette position dans l'arbre. Ici, ont ne fait
-		pas la différence entre le nom des variables liées : lors de la recherche de 
-		candidats pendant l'élaboration du type $\tau_0$, on concidèrera les occurences
-		d'une variable liée dans un schéma de type comme indépendantes les unes des 
-		autre. Par exemple, le type $\forall \alpha. \alpha \rightarrow \alpha$ sera 
-		vu comme $\forall \alpha \beta. \alpha \rightarrow \beta$. L'ensemble des 
-		candidats obtenu sera donc une sur-approximation de l'ensemble optimal.
+		variables liées (génériques) à cette position dans l'arbre. On notera 
+		$\Gamma_\dn$ l'ensemble des règles associé à l'ensemble des variables liées
+		de $\dn$. Ici, ont ne fait pas la différence entre le nom des variables
+		liées : lors de la recherche de candidats pendant l'élaboration du type 
+		$\tau_0$, on considérera les occurrences d'une variable liée dans un schéma 
+		de type comme indépendantes les unes des autre. Par exemple, le type 
+		$\forall \alpha. \alpha \rightarrow \alpha$ sera vu comme $\forall \alpha 
+		\beta. \alpha \rightarrow \beta$. L'ensemble des candidats obtenu sera donc
+		une sur-approximation de l'ensemble optimal.
 	\item Le troisième élément du quadruplet représente le constructeur de types
 		$\rightarrow$. Il fait appel à deux instances de type \texttt{dn}, 
 		représentant la structure d'un type.
@@ -52,7 +56,7 @@ syntaxe adoptée dans le projet :
 		d'arguments\footnote{Si $\rightarrow$ avait été un constructeur, sa liste 
 		associée aurait été de taille 2.}. Dans le cas où un constructeur n'a pas
 		d'argument, on lui associe une liste de règle, comme on l'a fait dans le cas
-		des variables libres.
+		des variables libres. On note cet ensemble de règles $\Sigma_\dn^\epsilon$.
 \end{itemize}
 
 Pour essayer de rendre cette structure plus explicite, on va donner les méthodes 
@@ -93,5 +97,55 @@ de $\dn$ peut être reproduit dans l'arbre syntaxique du codomaine du schéma de
 type contenu dans la règle.
 
 \subsection{Recherche d'un ensemble de règles dans la structure $\dn$}
+
+\noind Ici on cherche à trouver dans $\dn$ un ensemble de règles 
+$\Sigma^{\tau}_{\dn}$ dont le codomaine peut être instancié en un type $\tau$. 
+Là aussi on raisonne sur la structure de $\tau$ :
+
+\begin{itemize}
+	\item Si $\tau$ est une variable (libre\footnote{On ne peut élaborer que des 
+		types monomorphes, donc $\tau$ ne sera jamais une variable liée}) $x$, alors 
+		$$ \Sigma^{\tau}_\dn = \Gamma_\dn \cup \Sigma^{x}_\dn $$
+	\item Si $\tau = \tau_1 \rightarrow \tau_2$ et que le troisième champs de $\dn$
+		est $(\dn_1, \dn_2)$ alors
+		$$ \Sigma^{\tau}_\dn  = \Gamma_\dn \cup \left( \Sigma^{\tau_1}_{\dn_1} \cap 
+		\Sigma^{\tau_2}_{\dn_2} \right).$$
+		
+		L'intersection vient du fait que l'ensemble des règles vérifiant la 
+		condition sur $\tau_1 \rightarrow \tau_2$ est l'ensemble des règles qui 
+		vérifient la condition sur $\tau_1$ et la condition sur $\tau_2$.
+		
+		Si le troisième champs de $\dn$ a la valeur \texttt{None}, alors 
+		$$ \Sigma^\tau_\dn = \Gamma_\dn.$$
+	\item Si $\tau = (\tau_1, ..., \tau_n)\epsilon$ et que le quatrième champs de 
+		$\dn$ contient $\epsilon$ auquel est associé $(\dn_1, ..., \dn_n)$, alors 
+		$$ \Sigma^\tau_\dn = \Gamma_\dn \cup \bigcap_{i=1}^{n} \Sigma^{\tau_i}_{\dn_i} $$
+
+		Si $\epsilon$ n'appartient pas au dernier champs de $\dn$, alors 
+		$$ \Sigma^\tau_\dn = \Gamma_\dn \cup \Sigma^\epsilon_\dn. $$
+\end{itemize}
+
+\noind On remarquera qu'à chaque fois la réponse de l'\algo contient toutes les règles 
+du deuxième champs de $\dn$ : en effet, ce champs représente l'ensemble des règles "sous
+une variable liée" c'est à dire pouvant être instanciée.
+
+\section{Critique de la méthode}
+
+\noind Ici, la complexité pour trouver une règle connaissant son codomaine est 
+proportionnel \textit{en théorie} à taille du codomaine. Mais en pratique, ce 
+résultat peut être faussé par l'implémentation que l'on a fait des ensembles de
+règle : en effet, on a choisi d'utiliser des listes pour représenter les 
+ensembles, ce qui ajoute une complexité linéaire en la taille de l'ensemble
+pour retrouver un élément dedans ou encore pour faire l'union de deux ensembles
+\footnote{Ici, les unions sont toujours des unions disjointes car, pour un $\dn$
+fixé, on ne peut être à la fois dans $\Gamma_\dn$ et dans l'un $\Sigma_\dn$
+par construction de $\dn$ : on ne peut être à la fois une variable liée et une
+flèche par exemple.}. De plus, les intersections entre deux ensembles de taille
+$n$ et $m$ se sont en complexité proportionnelle à $nm$.
+
+\noind Cette méthode nous fait donc gagner en complexité dans le cas où les 
+types ont des codomaines de formes assez éloignées les unes des autres, car alors 
+les ensembles sont petits. Mais dans le cas contraire, je ne suis pas sûr de la
+pertinence de ma méthode.
 
 \end{document}
