@@ -333,7 +333,8 @@ let exproftype (ivenv : Dn.t) (t0 : typ) : expression =
                   | [] -> Some (List.rev accu)
                   | t'::others -> 
                       (*match aux ((x, t0)::path) t' tail with*)
-                      match aux ((x, t0)::path) t' listchoice with
+                      (*match aux ((x, t0)::path) t' listchoice with*)
+                      match aux ((x, t0)::path) t' (Dn.find ivenv t') with
                         | None -> None
                         | Some n -> dispatch_types (n::accu) others
                 in (
