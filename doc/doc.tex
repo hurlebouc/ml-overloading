@@ -9,10 +9,89 @@ structure de leur codomaine. Pour cela, on a utilisé une structure d'arbre.
 L'idée est de faire partager aux types stockés le plus possible de leurs 
 structures.\\
 
-\noind jfhjh
+\section{Structure de la base de donnée}
+
+\noind La structure de la base de donnée sera définie en OCaml comme suit :
 
 
+\begin{lstlisting}
+type ('a, 'b) either =
+  | Left of 'a
+  | Right of 'b
+
+type dn = ConsDN of 
+    ((type_variable * (rule * int) list) list)
+  * ((rule * int) list)
+  * (dn*dn) option
+  * (type_constructor * (dn list, (rule * int) list) either) list
+\end{lstlisting}
 
 
+\noind Chaque n\oe ud de la structure est la donnée d'un quadruplet, chacun des 
+quatre éléments représentant l'un des constructeurs de tête d'un type dans la 
+syntaxe adoptée dans le projet :
+
+\begin{itemize}
+	\item Le premier élément du quadruplet permet de savoir quelles sont les
+		variables libres de type qui sont disponibles à cette position dans l'arbre.
+		à chaque variable libre est associée une liste de règles (avec en plus un 
+		entier qui permettra de connaître l'ordre d'arrivée des règles).
+	\item Le deuxième permet de savoir quelles sont les règles associées aux 
+		variables liées (génériques) à cette position dans l'arbre. Ici, ont ne fait
+		pas la différence entre le nom des variables liées : lors de la recherche de 
+		candidats pendant l'élaboration du type $\tau_0$, on concidèrera les occurences
+		d'une variable liée dans un schéma de type comme indépendantes les unes des 
+		autre. Par exemple, le type $\forall \alpha. \alpha \rightarrow \alpha$ sera 
+		vu comme $\forall \alpha \beta. \alpha \rightarrow \beta$. L'ensemble des 
+		candidats obtenu sera donc une sur-approximation de l'ensemble optimal.
+	\item Le troisième élément du quadruplet représente le constructeur de types
+		$\rightarrow$. Il fait appel à deux instances de type \texttt{dn}, 
+		représentant la structure d'un type.
+	\item Le dernier élément liste tous les constructeurs de types disponibles à 
+		cette position dans l'arbre. À chaque constructeur est associé sa liste 
+		d'arguments\footnote{Si $\rightarrow$ avait été un constructeur, sa liste 
+		associée aurait été de taille 2.}. Dans le cas où un constructeur n'a pas
+		d'argument, on lui associe une liste de règle, comme on l'a fait dans le cas
+		des variables libres.
+\end{itemize}
+
+Pour essayer de rendre cette structure plus explicite, on va donner les méthodes 
+de recherche et d'ajout d'un type dans une structure de type \texttt{dn}.
+
+\section{Méthodes d'accès}
+
+\subsection{Méthode d'ajout d'une règle}
+
+\noind Étant donné une règle $r$ contenant le schéma de codomaine $\tau_0$ et une structure 
+\texttt{dn}, alors \texttt{insérer($r$, $\tau_0$, $dn$)} est définie comme suit :
+\begin{itemize}
+	\item Si $\tau_0$ est une variables libre $x$, on ajoute $r$ à la liste
+		associée à $x$ dans le premier champs de $\dn$ (si $x$ n'était pas présent 
+		dans $\dn$, on l'aura ajouté au préalable)
+	\item Si $\tau_0$ est une variable liée, on ajoute $r$ à la liste des variables 
+		liées (deuxièmes champs de $\dn$)
+	\item Si $\tau_0 = \tau_1 \rightarrow \tau_2$ et que le troisième champs de $\dn$
+		est de la forme $ (\dn_1, dn_2) $\footnote{Si le troisième champs de $\dn$ 
+		avait auparavant la valeur \texttt{None}, on le remplace par $(\mathtt{vide, vide})$
+	où $\texttt{vide}$ est la valeur $([], [], \mathtt{None}, [])$ de type $\dn$}, on effectue 
+		\texttt{insérer($r, \tau_1, \dn_1$)} et \texttt{insérer($r, \tau_2, \dn_2$)}.
+	\item Si $\tau_0 = (\tau_1, ..., \tau_n)\epsilon$ est un constructeur et que
+		le quatrième champs de $\dn$ contient $\epsilon$ auquel est associé 
+		$(\dn_1, ..., \dn_n)$, on appel de la même manière que le cas précédent la fonction
+		\texttt{insérer} sur les arguments $(r, \tau_i, \dn_i)$. Si $n = 0$ (le 
+		constructeur de type $\epsilon$ n'est pas générique), alors le quatrième 
+		champs de $\dn$ contient $\epsilon$ auquel est associé une liste de règles :
+		on ajoute $r$ à cette liste.
+\end{itemize}
+
+\noind On remarque que $\tau_0$ n'est en lien directe avec $r$ que lors du 
+premier appel de \texttt{insérer}. Alors que $\tau_0$ va diminuer en taille 
+pendant la descente dans l'arbre, $r$ restera le même. Les feuilles de l'arbre 
+ainsi créé sont donc des ensembles des règles, et un règle appartient à une 
+feuille de l'arbre $\dn$ si le chemin pour aller de cette feuille à la racine
+de $\dn$ peut être reproduit dans l'arbre syntaxique du codomaine du schéma de 
+type contenu dans la règle.
+
+\subsection{Recherche d'un ensemble de règles dans la structure $\dn$}
 
 \end{document}
