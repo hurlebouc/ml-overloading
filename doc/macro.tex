@@ -1,0 +1,114 @@
+% !TEX TS-program = latex
+% !TEX encoding = Windows Latin 1
+\documentclass[11pt]{article}
+
+%Fourier for math | Utopia (scaled) for rm | Helvetica for ss | Latin Modern for tt
+\usepackage[upright]{fourier} % math & rm
+\usepackage[scaled=0.875]{helvet} % ss
+\renewcommand{\ttdefault}{lmtt} %tt
+
+% Latin Modern (similar to CM with more characters)
+%\usepackage{lmodern} % math, rm, ss, tt
+
+\usepackage{geometry}
+\geometry{a4paper}
+\usepackage{amsmath}
+\usepackage{stmaryrd}
+\usepackage{listings}
+\usepackage{moreverb}
+\usepackage{amsfonts,amssymb,verbatim}
+\usepackage{amsthm}
+\usepackage{mathrsfs}
+\usepackage{graphicx}
+\usepackage{pstricks,pst-plot,pstricks-add,pst-math,pst-node}
+\usepackage[latin1]{inputenc}
+\usepackage{color}
+\usepackage[T1]{fontenc}
+\usepackage{lastpage}
+\usepackage[francais]{babel}
+\usepackage{fancyhdr}
+\usepackage{calc}
+\newcommand{\noind}{\noindent}
+\usepackage[bookmarks,colorlinks,breaklinks]{hyperref}  % PDF hyperlinks, with coloured links
+\definecolor{dullmagenta}{rgb}{0.4,0,0.4}   % #660066
+\definecolor{darkblue}{rgb}{0,0,0.4}
+\hypersetup{linkcolor=blue,citecolor=blue,filecolor=dullmagenta,urlcolor=darkblue} % coloured links
+%\hypersetup{linkcolor=black,citecolor=black,filecolor=black,urlcolor=black} % black links, for printed output
+
+\newcommand{\imp}[1]{\textit{\textbf{#1}} }
+
+ 
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\texttt{C}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\K}{\mathbb{K}}
+\renewcommand{\P}{\mathfrak{P}}
+\newcommand{\pere}{\mathtt{pere}}
+\newcommand{\pool}{\mathtt{pool}}
+\newcommand{\num}{\mathtt{num}}
+\newcommand{\pop}{\mathtt{pop}}
+\newcommand{\push}{\mathtt{push}}
+\newcommand{\T}{\mathfrak{T}}
+\newcommand{\n}{\mathbf{n}}
+
+
+
+\newcommand{\ssi}{si et seulement si }
+\newcommand{\re}{\mbox{Re} }
+\newcommand{\im}{\mbox{Im} }
+\newcommand{\vect}{\mbox{vect} }
+\newcommand{\rg}{\mbox{rg} }
+\newcommand{\Ker}{\mbox{Ker} }
+\newcommand{\tr}{\mbox{tr} }
+\newcommand{\Sp}{\mbox{S}_{p} }
+\newcommand{\Quad}{\mbox{Quad} }
+\newcommand{\grad}{\overrightarrow{\mbox{grad}} }
+\newcommand{\rot}{\overrightarrow{\mbox{rot}} }
+
+\newcommand{\bea}{\texttt{Beaengine} }
+\newcommand{\dis}{\texttt{DISASM} }
+\newcommand{\out}{\textit{out} }
+\newcommand{\fdis}{\texttt{int:Disasm(*DISASM)} }
+\newcommand{\jb}{\textit{junk byte} }
+\newcommand{\jbs}{\textit{junk bytes} }
+\newcommand{\noeud}{n\oe ud }
+\newcommand{\noeuds}{n\oe uds }
+\newcommand{\algo}{algorithme }
+\newcommand{\algos}{algorithmes }
+\newcommand{\bs}{\textit{base set} }
+\newcommand{\pb}{\textit{pullback }}
+\newcommand{\id}{\mathsf{id}}
+\newcommand{\Id}{\mathsf{Id}}
+
+\newcommand{\Set}{\mathsf{Set}}
+\newcommand{\define}{\overset{\mathrm{def}}=}
+
+\newcommand{\diapo}[2]{\frame{\frametitle{#1} #2 }}
+
+\definecolor{gris}{rgb}{0.9,0.9,0.9} 
+\definecolor{bleuclair}{rgb}{0.7,0.7,1}
+
+
+\newcommand{\abs}[1]{\left| #1 \right|}
+\newcommand{\norme}[1]{\left\Vert #1 \right\Vert}
+%\newcommand{\tribarre}[1]{\left\Vert \! \! \: \left| #1 \right| \! \!  \: \right\Vert}
+%\newcommand{\dint}[1]{\displaystyle{\int} \! \!  \! \! \displaystyle{\int_{ #1}} }
+%\newcommand{\tint}[1]{\displaystyle{\int} \! \!  \! \! \displaystyle{\int} \! \!  \! \! \displaystyle{\int_{#1}} }
+\newcommand{\tribarre}[1]{\left\VERT #1 \right\VERT} % avec le package fourier
+\newcommand{\dint}[1]{\displaystyle{\iint_{#1}}} % avec le package fourier
+\newcommand{\tint}[1]{\displaystyle{\iiint_{#1}}} % avec le package fourier
+\newcommand{\scal}[1]{\left\langle #1 \right\rangle}
+\newcommand{\ent}[1]{\left\llbracket#1\right\rrbracket}
+\newcommand{\somme}[2]{\displaystyle{\sum_{#1}^{#2}}}
+\newcommand{\intergale}[2]{\displaystyle{\int_{#1}^{#2}}}
+\def\jfrac#1#2{\raisebox{2pt}{$#1$}/\raisebox{-2pt}{$#2$}}   %%%%  jolie fraction
+\newcommand{\barre}[1]{\overline{#1}}
+
+\def\dedge{\ncline[linestyle=dashed]}
+\def\couleur{\ncline[linecolor=red]}
+
+\psset{arrows=->,shortput=nab}
+
+\newcommand{\repr}[1]{\ent{#1}}
