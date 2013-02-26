@@ -92,7 +92,7 @@ let rec make_new_env env = function
           make_new_env env' ((None, x, s, stub)::tl);;
   
 
-(* fonction de substitution de types *)
+(* fonctions de substitution de types *)
 
 exception Erreur of string
 
@@ -109,7 +109,8 @@ let rec extract_unspec_var lv lt = match lv, lt with
   | h1::t1, h2::t2 -> extract_unspec_var t1 t2
   | _ -> raise (Erreur "Trop de spécifications");;
 
-(* renvoie true si s est un "bon" schema de type (respecte la restriction) *)
+(* renvoie true si s est un "bon" schema de type c'est à dire si toute les
+ * variables liées apparaissent dans le codomaine *)
 let test_restriction (s : sch) =
   let (tvs , (_, t)) = s in
   let rec is_in (x : type_variable) = function
@@ -195,8 +196,6 @@ let rec elaborate_expr env (e : expression) : sch * expression =
   (* fonction de résolution des arguments implicites *)
 
   let rec resolve_imp env (s : sch) (n : expression) = 
-    (*printf "%s : %s\n" (Printast.expr_to_string n) (Printast.sch_to_string
-     * s);*)
     match s with
       | [], (tau::rho, t) -> 
           let n0 = try exproftype env.ivenv tau with
@@ -207,8 +206,6 @@ let rec elaborate_expr env (e : expression) : sch * expression =
             resolve_imp env s' n'
       |_ -> s, n
   in
-
- (*printf "expression : %s\n\n" (Printast.expr_to_string e); *)
 
   match e with
     | EVar(x)->
@@ -228,7 +225,6 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           (try resolve_imp env (tv,r) e with
             | Dn.ElabFail message -> Error.error [Error.Expr(e)] message)
     | EFun(x, t2, m1)-> 
-        (*printf "TEST : %s\n" (to_string_details t2);*)
         (*let t2 = bind_type_var env t2 in*)
         let nenv = {
           dcenv = env.dcenv; 
@@ -245,7 +241,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           | (([],([],TArrow(t2, t1))), n1), (([],([],t2')), n2) (*when t2=t2'*)->
               (*if equalsT t2 t2' then*)
               if t2=t2' then
-                (* Le "=" nest pas trop restrictif car les termes sont 
+                (* Le "=" n'est pas trop restrictif car les termes sont 
                  * explicitement spécifiés *)
 
                 ([], ([], t1)), (EApp(n1, n2))
@@ -264,19 +260,21 @@ let rec elaborate_expr env (e : expression) : sch * expression =
               Error.error [Error.Expr(e)] "Le type de la fonction n'est pas une flèche"
       )
     | EConApp(c, lt, le) ->
-        (*let lt = bind_typelist_var env lt in*)
         let Wf.Scheme(tvl, lte, tdef) = SM.find c (env.dcenv) in
         (* On sait |lt| = |tvl| car sinon le test de well foundness aurait
          * planté *)
         let g = substitution tvl lt in
         let f x = Error.error [Error.Expr(e)] "Ce ne sont pas ces variables que vous recherchez..." in
+        
+        (* permet d'élaborer les argument des constructeurs et de vérifier la
+         * cohérence des argument avec la définition *)
         let rec comp_arg le lte = match le, lte with
           | h1::t1, h2::t2 -> (
               match elaborate_expr env h1 with
                 (*| ([], ([], t)), n -> if equalsT t (Type.lift f g h2)*)
                 | ([], ([], t)), n -> if t=(Type.lift f g h2)
 
-                  (* De même ici *)
+                  (* De même ici pour l'égalité *)
 
                   then n::(comp_arg t1 t2)
                   else (
@@ -339,7 +337,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
                       Error.error [Error.Expr(m1)] "Types incompatibles" 
                   end
 
-                  (* De même ici *)
+                  (* De même ici pour l'égalité *)
 
                   else
                     let accu' = (None, x, s1, n1)::accu in
@@ -350,7 +348,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
           (s2, ELetRec(res, n2))
     | EMatch(m, lp) -> 
 
-        (* vérification du type de M*)
+        (* vérification du type de M *)
 
         let (s, n) = elaborate_expr env m in
         let (tc, taubarre) = match s with 
@@ -435,12 +433,7 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         let (s, n) = elaborate_expr nenv m in 
         let a', r = s in
           (close_scheme (a@a') r, ELam(a,n))
-
-    (*(
-     match s with
-     |[], r -> ((a, r), ELam(a,n))
-     |_ -> Error.error [Error.Expr(e)] "Polymorphisme non permis ici"
-     )*)    
+  
     | ETapp(m,lt) ->
         (*let lt = bind_typelist_var env lt in*)
         let (la, r), n = elaborate_expr env m in
@@ -450,8 +443,6 @@ let rec elaborate_expr env (e : expression) : sch * expression =
                       "alors que "^(string_of_int (List.length la))^" sont attendus." in
               Error.error [Error.Expr(e)] str
               else
-                (*(* DEBUG *) print_sch (la, r); printf "\n";*)
-                (*(* DEBUG *) List.iter (fun x -> printf "%s " (to_string x)) lt; printf "\n";*) 
                 let g = substitution_partial la lt in
                 let lift_row = List.map (Type.lift (fun x -> TFvar(x)) g) in
                 let (timp, t) = r in

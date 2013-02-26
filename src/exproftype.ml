@@ -49,25 +49,6 @@ let string_of_rule r =
 let print_rule_list = List.iter (fun x -> printf "%s\n" (string_of_rule x));;
 
 module Dn : DN = struct
-    
-  
-  (*
-  type dn = 
-    | Adn of adn
-    | Fdn of type_variable * rule (* * int *)
-    | Gdn of type_variable * rule (* * int *)
-  and adn = shape list
-  and shape =
-    | FFshape of type_variable * type_variable * rule * int (*  free - free  *)
-    | FGshape of type_variable * type_variable * rule * int (*  free - bound *)
-    | GFshape of type_variable * type_variable * rule * int (* bound - free  *)
-    | GGshape of type_variable * type_variable * rule * int (* bound - bound *)
-    | FAshape of type_variable * adn                        (*  free - arrow *)
-    | GAshape of type_variable * adn                        (* bound - arrow *)
-    | AFshape of adn * type_variable                        (* arrow - free  *)
-    | AGshape of adn * type_variable                        (* arrow - bound *)
-    | AAshape of adn * adn                                  (* arrow - arrow *)
-   *)
 
   type ('a, 'b) either =
     | Left of 'a
@@ -103,6 +84,9 @@ module Dn : DN = struct
     high = ConsDN([], [], None, []), 0
   }
 
+
+  (* ce type est juste utlisé pour pouvoir modéliser l'univers entier des types
+   * (pratique pour les cas d'initialisation des inductions)*)
   type 'a set = 
     | Infty
     | Set of 'a list
@@ -119,21 +103,21 @@ module Dn : DN = struct
             else intercection (Set(tl)) (Set(l2))
 
   let find (m : t) (t0 : typ) : rule list =
-    (*Printf.printf "search %s\n" (Printast.sch_to_string  ([], ([], t0)));*)
+
+    (* Trouve toutes règles dont le codomaine peut s'instancié t0
+     * n'établie pas encore d'ordre sur les règles *)
     let rec filtre (dn : dn) (t0 : typ) : (rule*int) list =
-      (*Printf.printf "   enter recursion [%s] : " (Printast.sch_to_string  ([],([], t0)));*)
       let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
       let res =  match t0 with
         | TFvar tv ->
-            (*Printf.printf "FV\n";*)
-            let _, liste = 
+            let _, liste = (* on récupère l'ensemble des règles associés à la
+                            * la variable tv*)
               try List.find (fun (tv', lrule) -> tv = tv') lfvars
               with
                 |Not_found -> "", []
-            in lgvars @ liste
-        | TGvar _ -> assert false
+            in lgvars @ liste (* union *)
+        | TGvar _ -> assert false (* cf doc *)
         | TArrow(t1,t2) -> (
-            (*Printf.printf "Arrow\n";*)
             match arrow with
               | None -> lgvars
               | Some (dn1, dn2) ->
@@ -145,7 +129,6 @@ module Dn : DN = struct
           )
         | TConApp(tc, ltype) -> 
             try
-              (*Printf.printf "Cons\n";*)
               let _, succ = List.find (fun (tc', ldn) -> tc' = tc) lcons 
               in match succ with
                 | Left ldn -> (
@@ -153,31 +136,30 @@ module Dn : DN = struct
                             (fun accu dn t -> intercection (Set(filtre dn t)) accu) 
                             Infty ldn ltype with
                       | Infty -> assert false
-                      | Set l -> l @ lgvars (* OK : dans le cas où on a fait des 
+                      | Set l -> l @ lgvars (* dans le cas où on a fait des 
                                              appels recursifs dans les types de 
                                              specification du constructeur de type *)
                   )
-                | Right lr -> lr @ lgvars
+                | Right lr -> lr @ lgvars (* dans le cas où le constructeur de 
+                                           type n'admet pas de spécification *)
             with
               |Not_found ->
-                  lgvars (* OK : dans le cas où aucun constructeur semblable
+                  lgvars (* dans le cas où aucun constructeur semblable
                           n'est déjà dans l'environnement *)
-      in (*Printf.printf "      -> [";
-         List.iter (fun (r, n) -> Printf.printf "%s (%d), " (string_of_rule r) n) res;
-         Printf.printf "]\n";*)
+      in
          res
     in
+
+    (* Maintenant on tri les listes en fifo ou lifo *)
     let comp = fun (r, n) (r', n') -> n - n' in
     let comp_inv = fun (r, n) (r', n') -> n' - n in
     let proj = fun (r, n) -> r in
-    (*Printf.printf "   HIGH ----------------------------------------------\n";*)
     let high = List.map proj (List.sort comp_inv (filtre (proj m.high) t0)) in
-    (*Printf.printf "   NORMAL --------------------------------------------\n";*)
     let normal = List.map proj (List.sort comp (filtre (proj m.normal) t0)) in
-    (*Printf.printf "   LOW -----------------------------------------------\n";*)
     let low = List.map proj (List.sort comp (filtre (proj m.low) t0)) in
       high @ normal @ low
 
+  (* Cette fonction cherche dans le les règles répondant au prédicat p *)
   let rec find_exact (p : rule -> bool) (dn : dn) : rule list = 
     let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
     let p' = fun (rule, n) -> p rule in
@@ -193,7 +175,6 @@ module Dn : DN = struct
     let proj lRuleInt = List.map (fun (rule, n) -> rule) lRuleInt in
     let res = proj res in
 
-    (**)
     let find_exact_list p = fun ldn -> 
       List.fold_left (fun accu dn -> (find_exact p dn) @ accu) [] ldn in
 
@@ -212,13 +193,19 @@ module Dn : DN = struct
 
 
   let add (m : t) (rule : rule) : t =
-    let addInDN (dn : dn) (rule : rule) (n : int) : dn = 
+
+    (* ajoute dans un dn une règle avec le numéro n *)
+    let addInDN (dn : dn) (rule : rule) (n : int) : dn =
+
+      (* permet de s'enfoncer simultanément dans dn et le codomaine de rule sans
+       * toucher à rule*)
       let rec aux (dn : dn) (t : typ) : dn = 
         let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
           match t with
             | TFvar(tv) -> 
                 let rec add_to_list liste tv = match liste with
-                  | [] -> [(tv, [(rule, n)])]
+                  | [] -> [(tv, [(rule, n)])] (*si pas encore de variable libre
+                                                tv dans dn*)
                   | (tv', lr)::tl -> if tv = tv' 
                     then (tv', (rule, n)::lr)::tl
                     else (tv', lr)::(add_to_list tl tv)
@@ -229,7 +216,7 @@ module Dn : DN = struct
                 ConsDN(lfvars, lgvars, arrow, lcons)
             | TArrow(t1, t2) -> (
                 match arrow with
-                  | None -> 
+                  | None -> (* si pas encore de flèche dans dn *) 
                       let arrow = Some (
                         aux (ConsDN([], [], None, [])) t1
                         , aux (ConsDN([], [], None, [])) t2) in
@@ -247,8 +234,6 @@ module Dn : DN = struct
                                   (fun ty -> aux (ConsDN([], [], None, [])) ty)
                                   ltype 
                       in 
-                        (*Printf.printf "taille cons : %d" (List.length ltype);
-                        Printf.printf "taille liste : %d \n" (List.length ldn);*)
                         [(tc, Left (ldn))]
                     )
                   | (tc', succ)::tl -> if tc = tc' 
@@ -261,7 +246,6 @@ module Dn : DN = struct
                   ConsDN(lfvars, lgvars, arrow, lcons)
       in
       let (_, (_, ty)) = rule.sch in
-        (*Printf.printf "%s\n" (Printast.sch_to_string  rule.sch);*)
         aux dn ty
     in
 
@@ -272,8 +256,9 @@ module Dn : DN = struct
           high = m.high;
         }
       | Normal ->
-          (*Printf.printf "%s\n" (string_of_rule rule);*)
           let (_, (_, t)) = rule.sch in
+
+          (* définition du prédicat de conflit entre deux règles *)
           let p = fun r ->
             let (_, (_, t')) = r.sch in
               (r.name <> rule.name) && (Unification.unify t' t)

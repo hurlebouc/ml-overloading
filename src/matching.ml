@@ -71,7 +71,9 @@ let close_scheme tvs row : sch =
 
 
 
-let matching (s : sch) (t0 : typ) = 
+let matching (s : sch) (t0 : typ) =
+
+
   let rec checkadd accu (x : type_variable) (t : typ) = function
     | [] -> Some ((x,t)::accu)
     | (x',t')::tail as l -> 
@@ -90,6 +92,7 @@ let matching (s : sch) (t0 : typ) =
     | TConApp(tc, tl), TConApp(tc', tl') when tc = tc' ->
         matching_aux_list lmatch tvs tl tl'
     | _ -> None
+
   and matching_aux_list lmatch tvs tl tl' = match tl, tl' with
     | [], [] -> Some lmatch
     | head::tail, head'::tail' -> (
