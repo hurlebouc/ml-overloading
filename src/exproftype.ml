@@ -69,6 +69,10 @@ module Dn : DN = struct
     | AAshape of adn * adn                                  (* arrow - arrow *)
    *)
 
+  type ('a, 'b) either =
+    | Left of 'a
+    | Right of 'b
+
   type dn = 
       (* ((rule * int) list option) * ((rule * int) list option) * (dn option)*)
     | ConsDN of 
@@ -80,7 +84,7 @@ module Dn : DN = struct
         (* indique si une flèche est présente *)
         * (dn*dn) option
         (* liste des différents constructeurs présents à la racine *)
-        * (type_constructor * dn list ) list
+        * (type_constructor * (dn list, (rule * int) list) either) list
 
 
   type t = {
@@ -115,54 +119,92 @@ module Dn : DN = struct
             else intercection (Set(tl)) (Set(l2))
 
   let find (m : t) (t0 : typ) : rule list =
-
-    let rec filtre (dn : dn) (t0 : typ) : (rule*int) list = 
+    Printf.printf "search %s\n" (Printast.sch_to_string  ([], ([], t0)));
+    let rec filtre (dn : dn) (t0 : typ) : (rule*int) list =
+      Printf.printf "   enter recursion [%s] : " (Printast.sch_to_string  ([], ([], t0)));
       let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
-        match t0 with
-          | TFvar tv -> 
-              let _, liste = 
-                try List.find (fun (tv', lrule) -> tv = tv') lfvars
-                with
-                  |NotFound -> "", []
-              in lgvars @ liste
-          | TGvar _ -> assert false
-          | TArrow(t1,t2) -> (
-              match arrow with
-                | None -> lgvars
-                | Some (dn1, dn2) ->
-                    let l1 = filtre dn1 t1 in
-                    let l2 = filtre dn2 t2 in
+      let res =  match t0 with
+        | TFvar tv ->
+            Printf.printf "FV\n";
+            let _, liste = 
+              try List.find (fun (tv', lrule) -> tv = tv') lfvars
+              with
+                |Not_found -> "", []
+            in lgvars @ liste
+        | TGvar _ -> assert false
+        | TArrow(t1,t2) -> (
+            Printf.printf "Arrow\n";
+            match arrow with
+              | None -> lgvars
+              | Some (dn1, dn2) ->
+                  let l1 = filtre dn1 t1 in
+                  let l2 = filtre dn2 t2 in
                     match intercection (Set(l1)) (Set(l2)) with
                       | Set l -> l @ lgvars
                       | _ -> assert false
-            )
-          | TConApp(tc, ltype) ->
-              let _, liste = List.find (fun (tc', ldn) -> tc' = tc) lcons in
-                match List.fold_left2 
-                        (fun accu dn t -> intercection (Set(filtre dn t)) accu) 
-                        Infty liste ltype with
-                  | Infty -> lgvars
-                  | Set l -> l @ lgvars
+          )
+        | TConApp(tc, ltype) -> 
+            try
+              Printf.printf "Cons\n";
+              let _, succ = List.find (fun (tc', ldn) -> tc' = tc) lcons 
+              in match succ with
+                | Left ldn -> (
+                    match List.fold_left2 
+                            (fun accu dn t -> intercection (Set(filtre dn t)) accu) 
+                            Infty ldn ltype with
+                      | Infty -> assert false
+                      | Set l -> l @ lgvars (* OK : dans le cas où on a fait des 
+                                             appels recursifs dans les types de 
+                                             specification du constructeur de type *)
+                  )
+                | Right lr -> lr @ lgvars
+            with
+              |Not_found ->
+                  lgvars (* OK : dans le cas où aucun constructeur semblable
+                          n'est déjà dans l'environnement *)
+      in Printf.printf "      -> [";
+         List.iter (fun (r, n) -> Printf.printf "%s, " (string_of_rule r)) res;
+         Printf.printf "]\n";
+         res
     in
     let comp = fun (r, n) (r', n') -> n - n' in
     let proj = fun (r, n) -> r in
-    let high = List.map proj (List.sort comp (filtre (proj m.high) t0)) in
-    let normal = List.map proj (List.sort comp (filtre (proj m.normal) t0)) in
-    let low = List.map proj (List.sort comp (filtre (proj m.low) t0)) in
-      high @ normal @ List.rev low
+      Printf.printf "   HIGH ----------------------------------------------\n";
+      let high = List.map proj (List.sort comp (filtre (proj m.high) t0)) in
+        Printf.printf "   NORMAL --------------------------------------------\n";
+        let normal = List.map proj (List.sort comp (filtre (proj m.normal) t0)) in
+          Printf.printf "   LOW -----------------------------------------------\n";
+          let low = List.map proj (List.sort comp (filtre (proj m.low) t0)) in
+            high @ normal @ List.rev low
 
-  (* Deprecated *)
   let rec find_exact (p : rule -> bool) (dn : dn) : rule list = 
     let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
     let p' = fun (rule, n) -> p rule in
+
+    (* recherche dans les variables génériques *)
     let res = List.filter p' lgvars in
+
+    (* recherche dans les variables libres*)
     let res = List.fold_left 
                 (fun accu (tv, lr) -> (List.filter p' lr) @ accu) res lfvars in
-    let res = List.map (fun (rule, n) -> rule) res in
+
+    (* projection de la liste sur sa première composante (les règles) *)
+    let proj lRuleInt = List.map (fun (rule, n) -> rule) lRuleInt in
+    let res = proj res in
+
+    (**)
     let find_exact_list p = fun ldn -> 
       List.fold_left (fun accu dn -> (find_exact p dn) @ accu) [] ldn in
-    let res = List.fold_left 
-                (fun accu (tc, ldn) -> (find_exact_list p ldn) @ accu) res lcons in
+
+    (* recherche dans les constructeurs *)
+    let f = fun accu (tc, succ) ->
+      match succ with
+        | Left ldn -> (find_exact_list p ldn) @ accu
+        | Right lr -> proj ((List.filter p' lr)) @ accu
+    in
+
+    (* recherche dans les flèches *)
+    let res = List.fold_left f res lcons in
       match arrow with
         | None -> res
         | Some(dn1, dn2) -> (find_exact_list p [dn1; dn2]) @ res
@@ -196,18 +238,29 @@ module Dn : DN = struct
                         ConsDN(lfvars, lgvars, arrow, lcons)
               )
             | TConApp(tc, ltype) ->
-                let rec add_to_list liste tc = match liste with
-                  | [] -> [(tc, List.map 
+                let rec add_to_list lcons tc = match lcons with
+                  | [] -> (
+                      match ltype with
+                        | [] -> [(tc, Right([(rule, n)]))]
+                        | _ -> let ldn = List.map 
                                   (fun ty -> aux (ConsDN([], [], None, [])) ty)
-                                  ltype)]
-                  | (tc', ldn)::tl -> if tc = tc' 
-                    then (tc', List.map2 (fun dn ty -> aux dn ty) ldn ltype)::tl
-                    else (tc', ldn)::(add_to_list tl tc)
+                                  ltype 
+                      in 
+                        (*Printf.printf "taille cons : %d" (List.length ltype);
+                        Printf.printf "taille liste : %d \n" (List.length ldn);*)
+                        [(tc, Left (ldn))]
+                    )
+                  | (tc', succ)::tl -> if tc = tc' 
+                    then match succ with
+                      | Left ldn -> (tc', Left(List.map2 (fun dn ty -> aux dn ty) ldn ltype))::tl
+                      | Right lr -> (tc', Right((rule, n)::lr))::tl
+                    else (tc', succ)::(add_to_list tl tc)
                 in
                 let lcons = add_to_list lcons tc in
                   ConsDN(lfvars, lgvars, arrow, lcons)
       in
       let (_, (_, ty)) = rule.sch in
+        Printf.printf "%s\n" (Printast.sch_to_string  rule.sch);
         aux dn ty
     in
 
@@ -238,15 +291,6 @@ module Dn : DN = struct
           normal = m.normal;
           high = (addInDN (fst m.high) rule (snd m.high), (snd m.high) + 1);
         }
-
-  (*let get (m : t) (x : Ast.value_variable) : Ast.sch =
-    let rec get_aux x = function
-      | [] -> raise NotFound
-      | h::t -> if h.name = x then h.sch else get_aux x t
-    in try get_aux x m.low with
-      | _ -> try get_aux x m.normal with
-          | _ -> get_aux x m.high*)
-
 end
 
 
