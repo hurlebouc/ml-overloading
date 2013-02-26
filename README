@@ -1,0 +1,7 @@
+L'archive est un dépot GIT contenant deux branches intéressantes : 
+	- la branche master dans laquelle est réalisé le projet sans aucun extras
+	- la branche dn_optimisation implémente une version normalement plus efficace 
+	  de la structure Exproftype.DN
+
+L'archive contient également une explication rapide de la structure utilisée
+pour l'optimisation (dans le dossier doc/)

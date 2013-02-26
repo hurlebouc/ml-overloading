@@ -61,16 +61,10 @@ module Dn : DN = struct
 
   let empty = { low = []; normal = []; high = [] }
 
-  (* cette fonction est inutiles (ses entrées-sorties) ne me permettent pas de
-   * faire grand chose d'intéressant : elle se contente de tout renvoyer dans le
-   * bon ordre.
-   *)
+  (* Cette fonction se contente de tout renvoyer dans le bon ordre. *)
 
   let find (m : t) (t0 : typ) : rule list =
     (m.high) @ (m.normal) @ (List.rev m.low)
-
-  (* Il faut améliorer la fonction d'ajout en la rendant plus restrictives sur
-   * les ambiguités *)
 
   let add (m : t) (rule : rule) : t =
     match rule.priority with

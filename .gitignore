@@ -20,3 +20,11 @@ test/good/loop_tt.ml
 test/good/typeclass.ml
 test/good/typeclass.out
 test/others/loop_tt.ml
+*.aux
+*.dvi
+*.log
+*.pdf
+*.snm
+*.out
+*.nav
+*.toc
