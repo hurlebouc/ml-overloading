@@ -119,13 +119,13 @@ module Dn : DN = struct
             else intercection (Set(tl)) (Set(l2))
 
   let find (m : t) (t0 : typ) : rule list =
-    Printf.printf "search %s\n" (Printast.sch_to_string  ([], ([], t0)));
+    (*Printf.printf "search %s\n" (Printast.sch_to_string  ([], ([], t0)));*)
     let rec filtre (dn : dn) (t0 : typ) : (rule*int) list =
-      Printf.printf "   enter recursion [%s] : " (Printast.sch_to_string  ([], ([], t0)));
+      (*Printf.printf "   enter recursion [%s] : " (Printast.sch_to_string  ([],([], t0)));*)
       let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
       let res =  match t0 with
         | TFvar tv ->
-            Printf.printf "FV\n";
+            (*Printf.printf "FV\n";*)
             let _, liste = 
               try List.find (fun (tv', lrule) -> tv = tv') lfvars
               with
@@ -133,7 +133,7 @@ module Dn : DN = struct
             in lgvars @ liste
         | TGvar _ -> assert false
         | TArrow(t1,t2) -> (
-            Printf.printf "Arrow\n";
+            (*Printf.printf "Arrow\n";*)
             match arrow with
               | None -> lgvars
               | Some (dn1, dn2) ->
@@ -145,7 +145,7 @@ module Dn : DN = struct
           )
         | TConApp(tc, ltype) -> 
             try
-              Printf.printf "Cons\n";
+              (*Printf.printf "Cons\n";*)
               let _, succ = List.find (fun (tc', ldn) -> tc' = tc) lcons 
               in match succ with
                 | Left ldn -> (
@@ -162,20 +162,21 @@ module Dn : DN = struct
               |Not_found ->
                   lgvars (* OK : dans le cas où aucun constructeur semblable
                           n'est déjà dans l'environnement *)
-      in Printf.printf "      -> [";
-         List.iter (fun (r, n) -> Printf.printf "%s, " (string_of_rule r)) res;
-         Printf.printf "]\n";
+      in (*Printf.printf "      -> [";
+         List.iter (fun (r, n) -> Printf.printf "%s (%d), " (string_of_rule r) n) res;
+         Printf.printf "]\n";*)
          res
     in
     let comp = fun (r, n) (r', n') -> n - n' in
+    let comp_inv = fun (r, n) (r', n') -> n' - n in
     let proj = fun (r, n) -> r in
-      Printf.printf "   HIGH ----------------------------------------------\n";
-      let high = List.map proj (List.sort comp (filtre (proj m.high) t0)) in
-        Printf.printf "   NORMAL --------------------------------------------\n";
-        let normal = List.map proj (List.sort comp (filtre (proj m.normal) t0)) in
-          Printf.printf "   LOW -----------------------------------------------\n";
-          let low = List.map proj (List.sort comp (filtre (proj m.low) t0)) in
-            high @ normal @ List.rev low
+    (*Printf.printf "   HIGH ----------------------------------------------\n";*)
+    let high = List.map proj (List.sort comp_inv (filtre (proj m.high) t0)) in
+    (*Printf.printf "   NORMAL --------------------------------------------\n";*)
+    let normal = List.map proj (List.sort comp (filtre (proj m.normal) t0)) in
+    (*Printf.printf "   LOW -----------------------------------------------\n";*)
+    let low = List.map proj (List.sort comp (filtre (proj m.low) t0)) in
+      high @ normal @ low
 
   let rec find_exact (p : rule -> bool) (dn : dn) : rule list = 
     let ConsDN(lfvars, lgvars, arrow, lcons) = dn in
@@ -260,7 +261,7 @@ module Dn : DN = struct
                   ConsDN(lfvars, lgvars, arrow, lcons)
       in
       let (_, (_, ty)) = rule.sch in
-        Printf.printf "%s\n" (Printast.sch_to_string  rule.sch);
+        (*Printf.printf "%s\n" (Printast.sch_to_string  rule.sch);*)
         aux dn ty
     in
 
