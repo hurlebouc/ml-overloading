@@ -169,21 +169,6 @@ let equalsS s1 s2 = match s1, s2 with
     let (tl1', t1') = (List.map (Type.lift f g) tl1), (Type.lift f g t1) in
       t2=t1' && tl1'=tl2;;
 
-
-(* fonction de résolution des arguments implicites *)
-
-let rec resolve_imp env (s : sch) (n : expression) = 
-  (*printf "%s : %s\n" (Printast.expr_to_string n) (Printast.sch_to_string
-  * s);*)
-  
-  match s with
-  | [], (tau::rho, t) -> 
-      let n0 = exproftype env.ivenv tau in
-      let s' = ([], (rho, t)) in
-      let n' = EApp(n, n0) in
-        resolve_imp env s' n'
-  |_ -> s, n
-
 (* DEBUG : fonction d'impression de type, rang et schéma *)
 
 let rec to_string_details = function
@@ -204,7 +189,26 @@ let rec print_sch : sch -> unit = function
 
 let rec elaborate_expr env (e : expression) : sch * expression =
 
- (*printf "expression : %s\n\n" (Printast.expr_to_string e); *)
+
+  (* fonction de résolution des arguments implicites *)
+
+  let rec resolve_imp env (s : sch) (n : expression) = 
+    (*printf "%s : %s\n" (Printast.expr_to_string n) (Printast.sch_to_string
+     * s);*)
+
+    match s with
+      | [], (tau::rho, t) -> 
+          let n0 = try exproftype env.ivenv tau with
+            | Dn.ElabFail message -> Error.error [Error.Expr(e)] message
+          in
+          let s' = ([], (rho, t)) in
+          let n' = EApp(n, n0) in
+            resolve_imp env s' n'
+      |_ -> s, n
+  in
+
+
+    (*printf "expression : %s\n\n" (Printast.expr_to_string e); *)
 
   match e with
     | EVar(x)->
