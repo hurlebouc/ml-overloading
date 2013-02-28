@@ -3,15 +3,15 @@
 \begin{document}
 
 \noindent On a cherché à  trouver une structure de donnée permettant de stocker les 
-règles associant une variable implicite à  un type selon un hiérarchie permettant 
+règles associant une variable implicite à  un type selon une hiérarchie permettant 
 de facilement retrouver un ensemble de types à  partir de la connaissance de la
 structure de leur codomaine. Pour cela, on a utilisé une structure d'arbre. 
 L'idée est de faire partager aux types stockés le plus possible de leurs 
 structures.\\
 
-\section{Structure de la base de donnée}
+\section{Structure de la base de données}
 
-\noind La structure de la base de donnée sera définie en OCaml comme suit :
+\noind La structure de la base de données sera définie en OCaml comme suit :
 
 
 \begin{lstlisting}
@@ -41,10 +41,10 @@ syntaxe adoptée dans le projet :
 	\item Le deuxième permet de savoir quelles sont les règles associées aux 
 		variables liées (génériques) à cette position dans l'arbre. On notera 
 		$\Gamma_\dn$ l'ensemble des règles associé à l'ensemble des variables liées
-		de $\dn$. Ici, ont ne fait pas la différence entre le nom des variables
+		de $\dn$. Ici, on ne fait pas la différence entre le nom des variables
 		liées : lors de la recherche de candidats pendant l'élaboration du type 
 		$\tau_0$, on considérera les occurrences d'une variable liée dans un schéma 
-		de type comme indépendantes les unes des autre. Par exemple, le type 
+		de type comme indépendantes les unes des autres. Par exemple, le type 
 		$\forall \alpha. \alpha \rightarrow \alpha$ sera vu comme $\forall \alpha 
 		\beta. \alpha \rightarrow \beta$. L'ensemble des candidats obtenu sera donc
 		une sur-approximation de l'ensemble optimal.
@@ -55,7 +55,7 @@ syntaxe adoptée dans le projet :
 		cette position dans l'arbre. À chaque constructeur est associé sa liste 
 		d'arguments\footnote{Si $\rightarrow$ avait été un constructeur, sa liste 
 		associée aurait été de taille 2.}. Dans le cas où un constructeur n'a pas
-		d'argument, on lui associe une liste de règle, comme on l'a fait dans le cas
+		d'argument, on lui associe une liste de règles, comme on l'a fait dans le cas
 		des variables libres. On note cet ensemble de règles $\Sigma_\dn^\epsilon$.
 \end{itemize}
 
@@ -67,31 +67,31 @@ de recherche et d'ajout d'un type dans une structure de type \texttt{dn}.
 \subsection{Méthode d'ajout d'une règle}
 
 \noind Étant donné une règle $r$ contenant le schéma de codomaine $\tau_0$ et une structure 
-\texttt{dn}, alors \texttt{insérer($r$, $\tau_0$, $dn$)} est définie comme suit :
+\texttt{dn}, alors \texttt{insérer($r$, $\tau_0$, $\dn$)} est définie comme suit :
 \begin{itemize}
 	\item Si $\tau_0$ est une variables libre $x$, on ajoute $r$ à la liste
-		associée à $x$ dans le premier champs de $\dn$ (si $x$ n'était pas présent 
+		associée à $x$ dans le premier champ de $\dn$ (si $x$ n'était pas présent 
 		dans $\dn$, on l'aura ajouté au préalable)
 	\item Si $\tau_0$ est une variable liée, on ajoute $r$ à la liste des variables 
-		liées (deuxièmes champs de $\dn$)
-	\item Si $\tau_0 = \tau_1 \rightarrow \tau_2$ et que le troisième champs de $\dn$
-		est de la forme $ (\dn_1, dn_2) $\footnote{Si le troisième champs de $\dn$ 
+		liées (deuxième champ de $\dn$)
+	\item Si $\tau_0 = \tau_1 \rightarrow \tau_2$ et que le troisième champ de $\dn$
+		est de la forme $ (\dn_1, dn_2) $\footnote{Si le troisième champ de $\dn$ 
 		avait auparavant la valeur \texttt{None}, on le remplace par $(\mathtt{vide, vide})$
 	où $\texttt{vide}$ est la valeur $([], [], \mathtt{None}, [])$ de type $\dn$}, on effectue 
 		\texttt{insérer($r, \tau_1, \dn_1$)} et \texttt{insérer($r, \tau_2, \dn_2$)}.
 	\item Si $\tau_0 = (\tau_1, ..., \tau_n)\epsilon$ est un constructeur et que
-		le quatrième champs de $\dn$ contient $\epsilon$ auquel est associé 
-		$(\dn_1, ..., \dn_n)$, on appel de la même manière que le cas précédent la fonction
+		le quatrième champ de $\dn$ contient $\epsilon$ auquel est associé 
+		$(\dn_1, ..., \dn_n)$, on appelle de la même manière que le cas précédent la fonction
 		\texttt{insérer} sur les arguments $(r, \tau_i, \dn_i)$. Si $n = 0$ (le 
 		constructeur de type $\epsilon$ n'est pas générique), alors le quatrième 
-		champs de $\dn$ contient $\epsilon$ auquel est associé une liste de règles :
+		champ de $\dn$ contient $\epsilon$ auquel est associée une liste de règles :
 		on ajoute $r$ à cette liste.
 \end{itemize}
 
 \noind On remarque que $\tau_0$ n'est en lien directe avec $r$ que lors du 
 premier appel de \texttt{insérer}. Alors que $\tau_0$ va diminuer en taille 
 pendant la descente dans l'arbre, $r$ restera le même. Les feuilles de l'arbre 
-ainsi créé sont donc des ensembles des règles, et un règle appartient à une 
+ainsi créé sont donc des ensembles des règles, et une règle appartient à une 
 feuille de l'arbre $\dn$ si le chemin pour aller de cette feuille à la racine
 de $\dn$ peut être reproduit dans l'arbre syntaxique du codomaine du schéma de 
 type contenu dans la règle.
@@ -106,7 +106,7 @@ Là aussi on raisonne sur la structure de $\tau$ :
 	\item Si $\tau$ est une variable (libre\footnote{On ne peut élaborer que des 
 		types monomorphes, donc $\tau$ ne sera jamais une variable liée}) $x$, alors 
 		$$ \Sigma^{\tau}_\dn = \Gamma_\dn \cup \Sigma^{x}_\dn $$
-	\item Si $\tau = \tau_1 \rightarrow \tau_2$ et que le troisième champs de $\dn$
+	\item Si $\tau = \tau_1 \rightarrow \tau_2$ et que le troisième champ de $\dn$
 		est $(\dn_1, \dn_2)$ alors
 		$$ \Sigma^{\tau}_\dn  = \Gamma_\dn \cup \left( \Sigma^{\tau_1}_{\dn_1} \cap 
 		\Sigma^{\tau_2}_{\dn_2} \right).$$
@@ -115,33 +115,33 @@ Là aussi on raisonne sur la structure de $\tau$ :
 		condition sur $\tau_1 \rightarrow \tau_2$ est l'ensemble des règles qui 
 		vérifient la condition sur $\tau_1$ et la condition sur $\tau_2$.
 		
-		Si le troisième champs de $\dn$ a la valeur \texttt{None}, alors 
+		Si le troisième champ de $\dn$ a la valeur \texttt{None}, alors 
 		$$ \Sigma^\tau_\dn = \Gamma_\dn.$$
-	\item Si $\tau = (\tau_1, ..., \tau_n)\epsilon$ et que le quatrième champs de 
+	\item Si $\tau = (\tau_1, ..., \tau_n)\epsilon$ et que le quatrième champ de 
 		$\dn$ contient $\epsilon$ auquel est associé $(\dn_1, ..., \dn_n)$, alors 
 		$$ \Sigma^\tau_\dn = \Gamma_\dn \cup \bigcap_{i=1}^{n} \Sigma^{\tau_i}_{\dn_i} $$
 
-		Si $\epsilon$ n'appartient pas au dernier champs de $\dn$, alors 
+		Si $\epsilon$ n'appartient pas au dernier champ de $\dn$, alors 
 		$$ \Sigma^\tau_\dn = \Gamma_\dn \cup \Sigma^\epsilon_\dn. $$
 \end{itemize}
 
 \noind On remarquera qu'à chaque fois la réponse de l'\algo contient toutes les règles 
-du deuxième champs de $\dn$ : en effet, ce champs représente l'ensemble des règles "sous
+du deuxième champ de $\dn$ : en effet, ce champ représente l'ensemble des règles "sous
 une variable liée" c'est à dire pouvant être instanciée.
 
 \section{Critique de la méthode}
 
 \noind Ici, la complexité pour trouver une règle connaissant son codomaine est 
-proportionnel \textit{en théorie} à taille du codomaine. Mais en pratique, ce 
+proportionnelle \textit{en théorie} à la taille du codomaine. Mais en pratique, ce 
 résultat peut être faussé par l'implémentation que l'on a fait des ensembles de
-règle : en effet, on a choisi d'utiliser des listes pour représenter les 
+règles : en effet, on a choisi d'utiliser des listes pour représenter les 
 ensembles, ce qui ajoute une complexité linéaire en la taille de l'ensemble
 pour retrouver un élément dedans ou encore pour faire l'union de deux ensembles
 \footnote{Ici, les unions sont toujours des unions disjointes car, pour un $\dn$
 fixé, on ne peut être à la fois dans $\Gamma_\dn$ et dans l'un $\Sigma_\dn$
 par construction de $\dn$ : on ne peut être à la fois une variable liée et une
-flèche par exemple.}. De plus, les intersections entre deux ensembles de taille
-$n$ et $m$ se sont en complexité proportionnelle à $nm$.
+flèche par exemple.}. De plus, les intersections entre deux ensembles de tailles
+$n$ et $m$ se font en complexité proportionnelle à $nm$.
 
 \noind Cette méthode nous fait donc gagner en complexité dans le cas où les 
 types ont des codomaines de formes assez éloignées les unes des autres, car alors 

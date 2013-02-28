@@ -280,7 +280,8 @@ module Dn : DN = struct
 end
 
 
-(* renvoie true lorsque l'ajout de la variable et du type est légal *)
+(* renvoie true lorsque l'ajout de la variable et du type est légal (les deux
+* critères de la page 5)*)
 let test_bf path ((x0 : value_variable), (t0 : typ)) : bool =
   let p (x, t) = (t=t0) || (x=x0 && (size t0 > size t)) in
     not (List.exists p path);;
@@ -309,23 +310,29 @@ let exproftype (ivenv : Dn.t) (t0 : typ) : expression =
     | h::t -> apply_mult (EApp(head, h)) t 
   in
 
+    (* la fonction auxilière d'élaboriation demande comme premier argument le
+     * chemin à effectuer pour atteindre le terme élaboré (afin de vérifier le
+     * critère de terminaison) *)
   let rec aux (path : (value_variable * typ) list) t0 = function
     | [] -> None
     | rule::tail -> 
         let x, s = rule.name, rule.sch in
           match matching s t0 with
-            | Some(subst, new_row) when test_bf path (x, t0) -> 
+
+              (* lorsque le codomaine du schema est élaborable, on élabore les
+               * types du domaine*)
+            | Some(subst, new_row) when test_bf path (x, t0) ->
+                (* effectue les constructions successives des types du domaine *)
                 let rec dispatch_types accu = function
-                  | [] -> Some (List.rev accu)
+                  | [] -> Some (List.rev accu) (* domaine vide *)
                   | t'::others -> 
-                      (*match aux ((x, t0)::path) t' tail with*)
-                      (*match aux ((x, t0)::path) t' listchoice with*)
                       match aux ((x, t0)::path) t' (Dn.find ivenv t') with
                         | None -> None
                         | Some n -> dispatch_types (n::accu) others
                 in (
                   match dispatch_types [] new_row with
-                    | None -> aux path t0 tail
+                    | None -> aux path t0 tail (* l'élaboration d'un des types
+                                                du domaine a échouée*)
                     | Some ln -> Some ( apply_mult (ETapp(EVar(x), reorder subst s)) ln)
                 )
             | _ -> aux path t0 tail

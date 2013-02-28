@@ -73,7 +73,9 @@ let close_scheme tvs row : sch =
 
 let matching (s : sch) (t0 : typ) =
 
-
+  (* Cette fonction vérifie que l'on peut instancier la variable x au type t
+   * dans l'accumulateur (c'est à dire, si x n'est pas présent dans accu ou si il
+   * a déjà le type t)*)
   let rec checkadd accu (x : type_variable) (t : typ) = function
     | [] -> Some ((x,t)::accu)
     | (x',t')::tail as l -> 
@@ -81,6 +83,9 @@ let matching (s : sch) (t0 : typ) =
           if t <> t' then None else Some (accu @ l)
   in let checkadd = checkadd [] in
 
+  (* Cette fonction descent en parallèle dans les deux arborescences des deux
+  * types t et t0 et vérifie si les structures sont identiques, modulo une
+  * instanciation de variables (liées) de t *)
   let rec matching_aux lmatch tvs t t0 = match t, t0 with
     | TFvar(x), TFvar(x') when x=x' -> Some lmatch
     | TGvar(x), _ when List.mem x tvs -> checkadd x t0 lmatch
@@ -103,6 +108,7 @@ let matching (s : sch) (t0 : typ) =
     | _ -> failwith "On est pas sorti du sable..." (* impossible *)
   in
 
+  (*On utilise les fonctions définies plus haut*)
   let (tvs, (r, t)) = s in
     match matching_aux [] tvs t t0 with
       | None -> None

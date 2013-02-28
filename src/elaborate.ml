@@ -264,6 +264,8 @@ let rec elaborate_expr env (e : expression) : sch * expression =
         (* On sait |lt| = |tvl| car sinon le test de well foundness aurait
          * planté *)
         let g = substitution tvl lt in
+          (* f ne devrait jamais être appelée normalement car les variables
+          * libres ne doivent pas être instanciées. *)
         let f x = Error.error [Error.Expr(e)] "Ce ne sont pas ces variables que vous recherchez..." in
         
         (* permet d'élaborer les argument des constructeurs et de vérifier la
